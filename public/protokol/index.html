@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>SENAPATI — Protokol</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0f4c81" />
+  <link rel="icon" type="image/png" href="/assets/icon-32.png" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/protokol/protokol.css" />
+  <!-- PWA Screen Orientation: ikuti sistem, unlock agar bisa rotate -->
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      function unlockOrientation() {
+        try {
+          if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+            screen.orientation.unlock();
+          }
+        } catch (e) { /* tidak didukung, abaikan */ }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', unlockOrientation);
+      } else {
+        unlockOrientation();
+      }
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- ══ LOADING SCREEN ══ -->
+  <div id="pload-screen">
+    <div class="pload-logo-container">
+      <div class="pload-glow-ring"></div>
+      <img src="/assets/icon-192.png" alt="SENAPATI" class="pload-logo" id="pload-logo" />
+    </div>
+  </div>
+
+  <!-- ══ SPINNER ══ -->
+  <div id="pspinner">
+    <div class="pspinner-box">
+      <div class="pspin-ring"></div>
+      <div class="pspinner-label" id="pspinner-label">Memuat...</div>
+    </div>
+  </div>
+
+  <!-- ══ TOAST ══ -->
+  <div id="ptoast" aria-live="polite"></div>
+
+  <!-- ══ TOPBAR ══ -->
+  <header id="ptopbar" role="banner">
+    <div class="ptb-brand" onclick="pOpenSystemModal()">
+      <div class="ptb-logo-wrap">
+        <img src="/assets/icon-192.png" alt="Logo SENAPATI" class="ptb-logo" />
+        <div class="ptb-logo-dot"></div>
+      </div>
+      <div class="ptb-brand-text">
+        <h1>SENAPATI</h1>
+        <p>Protokol Bupati</p>
+      </div>
+    </div>
+
+    <nav class="ptb-tabs" id="ptb-tabs" role="tablist" aria-label="Navigasi halaman">
+      <button class="ptb-tab active" id="ptab-agenda"
+              onclick="pNavigate('agenda')" role="tab" aria-selected="true" aria-controls="pview-agenda">
+        <i class="bi bi-calendar2-check-fill"></i>
+        <span class="ptb-tab-text">Agenda</span>
+      </button>
+      <button class="ptb-tab" id="ptab-peta"
+              onclick="pNavigate('peta')" role="tab" aria-selected="false" aria-controls="pview-peta">
+        <i class="bi bi-map-fill"></i>
+        <span class="ptb-tab-text">Peta</span>
+      </button>
+    </nav>
+
+    <div class="ptb-right">
+      <div class="ptb-clock-block">
+        <span class="ptb-clock" id="pclock">--:--</span>
+        <span class="ptb-date" id="pdate">---</span>
+      </div>
+      <button class="ptb-user-btn" id="ptb-user-btn"
+              onclick="pToggleUserModal()" title="Profil Akun" aria-haspopup="dialog">
+        <div class="ptb-avatar" id="ptb-avatar">?</div>
+        <span class="ptb-user-name" id="puser-name">—</span>
+        <i class="bi bi-chevron-down ptb-chevron"></i>
+      </button>
+      <button class="ptb-icon-btn" onclick="pToggleTheme()" title="Ganti Tema" id="pbtn-theme">
+        <i class="bi bi-moon-fill" id="ptheme-icon"></i>
+      </button>
+      <button class="ptb-icon-btn" onclick="pRefreshAgenda()" title="Refresh Data">
+        <i class="bi bi-arrow-clockwise" id="picon-refresh"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ USER PROFILE DROPDOWN ══ -->
+  <div id="puser-modal" class="puser-modal" role="dialog"
+       aria-modal="true" aria-label="Profil Pengguna" style="display:none">
+    <div class="puser-card">
+      <div class="puser-card-hdr">
+        <div class="puser-avatar-lg" id="puser-card-avatar">?</div>
+        <div class="puser-info-block">
+          <div class="puser-card-name" id="puser-card-name">—</div>
+          <div class="puser-card-role" id="puser-card-role">—</div>
+        </div>
+      </div>
+      <div class="puser-card-wa" id="puser-card-wa" style="display:none">
+        <i class="bi bi-whatsapp"></i>
+        <div class="puser-card-wa-text">
+          <div class="puser-card-wa-label">Nomor WhatsApp</div>
+          <div class="puser-card-wa-number" id="puser-card-wa-number">—</div>
+        </div>
+      </div>
+      <div class="puser-mini-stats">
+        <div class="pums-item">
+          <div class="pums-val" id="pstat-today">0</div>
+          <div class="pums-lbl">Hari Ini</div>
+        </div>
+        <div class="pums-sep"></div>
+        <div class="pums-item">
+          <div class="pums-val" id="pstat-tomorrow">0</div>
+          <div class="pums-lbl">Besok</div>
+        </div>
+      </div>
+      <div class="puser-divider"></div>
+      <button class="puser-logout-btn" onclick="pLogout()" id="pbtn-logout">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Keluar dari Sistem</span>
+      </button>
+    </div>
+  </div>
+  <div id="puser-backdrop" class="puser-backdrop" onclick="pCloseUserModal()"></div>
+
+  <!-- ══ SYSTEM INFO MODAL ══ -->
+  <div id="psystem-modal" class="psystem-modal" role="dialog"
+       aria-modal="true" aria-label="Informasi Sistem" style="display:none">
+    <div class="psystem-backdrop" onclick="pCloseSystemModal()"></div>
+    <div class="psystem-card">
+      <div class="psystem-hdr">
+        <div class="psystem-logo-wrap">
+          <img src="/assets/icon-192.png" alt="Logo SENAPATI" class="psystem-logo" />
+        </div>
+        <button class="psystem-close-btn" onclick="pCloseSystemModal()" aria-label="Tutup">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="psystem-body">
+        <h2 class="psystem-title">SENAPATI</h2>
+        <p class="psystem-subtitle">Sentral Navigasi Pengelolaan Agenda dan Tata Informasi</p>
+        <p class="psystem-desc">Bupati Ponorogo</p>
+        
+        <div class="psystem-divider"></div>
+        
+        <div class="psystem-info-section">
+          <div class="psystem-info-label">
+            <i class="bi bi-info-circle-fill"></i> Versi Aplikasi
+          </div>
+          <div class="psystem-info-value">1.0.0</div>
+        </div>
+        
+        <div class="psystem-divider"></div>
+        
+        <div class="psystem-dev-section">
+          <div class="psystem-dev-label">
+            <i class="bi bi-code-slash"></i> Pengembang
+          </div>
+          <div class="psystem-dev-card">
+            <div class="psystem-dev-photo">
+              <img src="/assets/basith.jpeg" alt="Ahmad Abdul Basith" />
+            </div>
+            <div class="psystem-dev-info">
+              <div class="psystem-dev-name">Ahmad Abdul Basith, S.Tr.I.P</div>
+              <div class="psystem-dev-role">Developer</div>
+              <a href="https://wa.me/6285159686554" target="_blank" class="psystem-dev-wa">
+                <i class="bi bi-whatsapp"></i> Hubungi WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div class="psystem-divider"></div>
+        
+        <div class="psystem-footer">
+          <div class="psystem-copyright">
+            <i class="bi bi-c-circle"></i> 2026 Pemerintah Kabupaten Ponorogo
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MAIN CONTENT ══ -->
+  <main id="pmain">
+
+    <!-- ═══ VIEW: AGENDA ═══ -->
+    <div id="pview-agenda" class="pview active" role="tabpanel" aria-labelledby="ptab-agenda">
+
+      <!-- Stats Cards Row -->
+      <div class="pstats-row" id="pstats-row">
+        <button class="pstat-card c-green" id="psc-card-today"
+                onclick="pScrollToSection('today')" title="Agenda hari ini">
+          <div class="psc-icon"><i class="bi bi-calendar-check-fill"></i></div>
+          <div class="psc-val" id="psc-today">0</div>
+          <div class="psc-lbl">Hari Ini</div>
+        </button>
+        <button class="pstat-card c-blue" id="psc-card-tomorrow"
+                onclick="pScrollToSection('tomorrow')" title="Agenda besok">
+          <div class="psc-icon"><i class="bi bi-calendar-plus-fill"></i></div>
+          <div class="psc-val" id="psc-tomorrow">0</div>
+          <div class="psc-lbl">Besok</div>
+        </button>
+        <button class="pstat-card c-purple" id="psc-card-calendar"
+                onclick="pScrollToSection('calendar')" title="Kalender agenda">
+          <div class="psc-icon"><i class="bi bi-calendar3-fill"></i></div>
+          <div class="psc-val" id="psc-cal-month" style="font-size:.95rem;font-weight:900;line-height:1.2">—</div>
+          <div class="psc-lbl">Kalender</div>
+        </button>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="psearch-bar">
+        <div class="psearch-field">
+          <i class="bi bi-search psearch-ico"></i>
+          <input type="search" id="psearch-input" class="psearch-input"
+                 placeholder="Cari nama kegiatan atau lokasi..."
+                 autocomplete="off" oninput="pOnSearch(this.value)" />
+          <button class="psearch-clear" id="psearch-clear"
+                  onclick="pClearSearch()" style="display:none" aria-label="Hapus pencarian">
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        </div>
+        <div class="pfilter-row" id="pfilter-row">
+          <button class="ppill active" id="ppill-all"
+                  onclick="pSetFilter('all')">Semua</button>
+          <button class="ppill pp-green" id="ppill-hadir"
+                  onclick="pSetFilter('Hadir')">
+            <i class="bi bi-check-circle-fill"></i> Hadir</button>
+          <button class="ppill pp-amber" id="ppill-disp"
+                  onclick="pSetFilter('Disposisi')">
+            <i class="bi bi-arrow-right-circle-fill"></i> Disposisi</button>
+          <button class="ppill pp-red" id="ppill-tidak"
+                  onclick="pSetFilter('Tidak Hadir')">
+            <i class="bi bi-x-circle-fill"></i> Tidak Hadir</button>
+        </div>
+      </div>
+
+      <!-- ── Agenda Hari Ini ── -->
+      <div class="psec-hdr" id="psec-today">
+        <div class="psec-left">
+          <div class="psec-indicator ind-green"></div>
+          <span class="psec-label" style="color:#16a34a">
+            <i class="bi bi-calendar-check-fill"></i> Agenda Hari Ini
+          </span>
+        </div>
+        <span class="psec-count c-green" id="pcount-today">0</span>
+      </div>
+      <div id="pagenda-today">
+        <div class="pskel"></div><div class="pskel"></div>
+      </div>
+
+      <!-- ── Agenda Besok ── -->
+      <div class="psec-hdr" id="psec-tomorrow">
+        <div class="psec-left">
+          <div class="psec-indicator ind-blue"></div>
+          <span class="psec-label" style="color:#1e6fd9">
+            <i class="bi bi-calendar-plus-fill"></i> Agenda Besok
+          </span>
+        </div>
+        <span class="psec-count c-blue" id="pcount-tomorrow">0</span>
+      </div>
+      <div id="pagenda-tomorrow">
+        <div class="pskel"></div>
+      </div>
+
+      <!-- ── Search Results ── -->
+      <div id="psearch-results-wrap" style="display:none">
+        <div class="psec-hdr">
+          <div class="psec-left">
+            <div class="psec-indicator ind-purple"></div>
+            <span class="psec-label" style="color:#7c3aed">
+              <i class="bi bi-search"></i> Hasil Pencarian
+            </span>
+          </div>
+          <span class="psec-count c-purple" id="pcount-search">0</span>
+        </div>
+        <div id="psearch-results"></div>
+      </div>
+
+      <!-- ── Kalender Agenda ── -->
+      <div class="psec-hdr" id="psec-calendar">
+        <div class="psec-left">
+          <div class="psec-indicator ind-blue"></div>
+          <span class="psec-label" style="color:#1e6fd9">
+            <i class="bi bi-calendar3"></i> Kalender Agenda
+          </span>
+        </div>
+      </div>
+
+      <!-- Calendar Navigation -->
+      <div class="pcal-nav-bar">
+        <button class="pcal-nav-btn" onclick="pCalPrev()" aria-label="Bulan sebelumnya">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <div class="pcal-nav-center">
+          <span class="pcal-nav-title" id="pcal-label">— —</span>
+          <button class="pcal-today-btn" onclick="pCalToday()">Hari Ini</button>
+        </div>
+        <button class="pcal-nav-btn" onclick="pCalNext()" aria-label="Bulan berikutnya">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+
+      <!-- Calendar Month Summary -->
+      <div class="pcal-month-stats">
+        <div class="pcms-item ms-green">
+          <i class="bi bi-check-circle-fill"></i>
+          <span id="pcal-sum-hadir">0</span> Hadir
+        </div>
+        <div class="pcms-sep"></div>
+        <div class="pcms-item ms-amber">
+          <i class="bi bi-arrow-right-circle-fill"></i>
+          <span id="pcal-sum-disp">0</span> Disposisi
+        </div>
+        <div class="pcms-sep"></div>
+        <div class="pcms-item ms-red">
+          <i class="bi bi-x-circle-fill"></i>
+          <span id="pcal-sum-tidak">0</span> Tidak Hadir
+        </div>
+      </div>
+
+      <!-- Calendar Grid -->
+      <div class="pcal-wrap">
+        <div class="pcal-grid" id="pcalendar"></div>
+      </div>
+
+      <!-- Selected Day Panel -->
+      <div id="pcal-day-panel" class="pcal-day-panel" style="display:none">
+        <div class="pcdp-hdr">
+          <div>
+            <div class="pcdp-date" id="pcdp-date">—</div>
+            <div class="pcdp-count" id="pcdp-count">— agenda</div>
+          </div>
+          <button class="pcdp-close" onclick="pCloseDayPanel()" aria-label="Tutup">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div id="pcdp-content"></div>
+      </div>
+
+      <div style="height:90px"></div>
+    </div><!-- /pview-agenda -->
+
+    <!-- ═══ VIEW: PETA ═══ -->
+    <div id="pview-peta" class="pview" role="tabpanel" aria-labelledby="ptab-peta">
+      <div id="peta-agenda-root"
+           style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;height:0"></div>
+    </div>
+
+  </main>
+
+  <!-- ══ FILE VIEWER MODAL ══ -->
+  <div id="pfv-modal" class="pfv-modal" role="dialog"
+       aria-modal="true" aria-label="Lihat File">
+    <div id="pfv-topbar">
+      <div id="pfv-title">
+        <i class="bi bi-file-earmark" id="pfv-icon"></i>
+        <span id="pfv-name">File</span>
+      </div>
+      <div id="pfv-actions">
+        <a id="pfv-dl" href="#" target="_blank" rel="noopener" download
+           class="pfv-btn pfv-dl-btn">
+          <i class="bi bi-download"></i><span>Unduh</span>
+        </a>
+        <button class="pfv-btn pfv-close-btn" onclick="pCloseFileViewer()"
+                aria-label="Tutup file viewer">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+    <div id="pfv-body">
+      <div class="pfv-loading">
+        <div class="pspin-ring" style="border-top-color:#60a5fa"></div>
+        <span>Memuat file...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ NO SESSION ══ -->
+  <div id="pno-session" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--pb);align-items:center;justify-content:center;padding:20px">
+    <div style="text-align:center;max-width:320px">
+      <img src="/assets/icon-192.png" alt="Logo" style="width:64px;height:64px;object-fit:contain;margin-bottom:16px">
+      <h2 style="font-size:1.1rem;font-weight:800;color:var(--pt);margin-bottom:8px">Sesi Tidak Ditemukan</h2>
+      <p style="font-size:.82rem;color:var(--pm);margin-bottom:20px">Silakan login melalui halaman utama SENAPATI.</p>
+      <a href="/app" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:linear-gradient(135deg,#0f4c81,#1e6fd9);color:#fff;border-radius:10px;font-weight:700;font-size:.88rem;text-decoration:none">
+        <i class="bi bi-box-arrow-in-right"></i> Ke Halaman Login
+      </a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="/protokol/peta-protokol.js" defer></script>
+  <script src="/protokol/protokol.js" defer></script>
+</body>
+</html>

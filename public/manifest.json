@@ -1,0 +1,58 @@
+{
+  "name": "SENAPATI - Sentral Navigasi Pengelolaan Agenda dan Tata Informasi Bupati Ponorogo",
+  "short_name": "SENAPATI",
+  "description": "Sentral Navigasi Pengelolaan Agenda dan Tata Informasi Bupati Ponorogo",
+  "start_url": "/app",
+  "id": "/app",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0a1628",
+  "theme_color": "#0f4c81",
+  "categories": ["productivity", "government"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/assets/icon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Akses Protokol",
+      "short_name": "Protokol",
+      "description": "Buka halaman eksklusif untuk tim Protokol",
+      "url": "/protokol",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Buka Aplikasi Utama",
+      "short_name": "App Utama",
+      "description": "Buka dasbor utama SENAPATI",
+      "url": "/app",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "SENAPATI Dashboard"
+    }
+  ]
+}

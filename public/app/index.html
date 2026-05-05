@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>SENAPATI - Sentral Navigasi Pengelolaan Agenda dan Tata Informasi Bupati Ponorogo</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0f4c81" />
+  <link rel="icon" type="image/png" href="/assets/icon-32.png" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="/app/style.css" />
+  <!-- DOCX Generator Libraries -->
+  <script src="https://unpkg.com/pizzip@3.1.7/dist/pizzip.js" defer></script>
+  <script src="https://unpkg.com/docxtemplater@3.44.0/build/docxtemplater.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+  <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js" defer></script>
+  <!-- docx-preview: render .docx ke HTML visual (expose sebagai window.docx) -->
+  <script src="https://unpkg.com/docx-preview@0.3.2/dist/docx-preview.min.js" defer></script>
+  <!-- Mapping & PDF Libraries -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <!-- SENAPATI Scripts -->
+  <!-- PWA Screen Orientation: ikuti sistem, unlock agar bisa rotate -->
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      // Unlock orientasi agar mengikuti rotasi sistem perangkat
+      function unlockOrientation() {
+        try {
+          if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+            screen.orientation.unlock();
+          }
+        } catch (e) { /* tidak didukung, abaikan */ }
+      }
+      // Jalankan saat halaman siap
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', unlockOrientation);
+      } else {
+        unlockOrientation();
+      }
+    })();
+  </script>
+</head>
+
+<body>
+
+  <div id="spinner-overlay">
+    <div class="spinner-box">
+      <div class="spin"></div>
+      <div style="font-weight:700;color:var(--text-main);font-size:.95rem" id="spinner-label">Memproses...</div>
+      <div style="font-size:.78rem;color:var(--text-muted);margin-top:6px" id="spinner-sub">Mohon tunggu sebentar</div>
+      <!-- Progress bar -->
+      <div id="spinner-progress-wrap" style="display:none;margin-top:14px;width:220px">
+        <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div id="spinner-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--primary),var(--primary-lt));border-radius:4px;transition:width .35s ease"></div>
+        </div>
+        <div id="spinner-progress-pct" style="font-size:.7rem;color:var(--text-muted);margin-top:5px;text-align:right">0%</div>
+      </div>
+      <!-- Step list -->
+      <div id="spinner-steps" style="display:none;margin-top:14px;text-align:left;width:220px"></div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- PREVIEW MODAL -->
+  <div id="preview-overlay">
+    <div class="preview-box">
+      <div class="preview-header">
+        <h3><i class="bi bi-file-earmark-text"></i> Preview Dokumen</h3>
+        <button onclick="closePreview()"
+          style="background:none;border:none;cursor:pointer;color:#fff;font-size:1.5rem"><i
+            class="bi bi-x"></i></button>
+      </div>
+      <div class="preview-body">
+        <iframe id="preview-frame" src=""></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="view-login">
+    <!-- Wrapper dua kolom -->
+    <div class="login-wrapper">
+
+      <!-- KOLOM KIRI: INFO PANEL -->
+      <div class="login-info-panel">
+        <div class="login-info-logo">
+          <img src="/assets/icon-192.png" alt="Logo SENAPATI">
+        </div>
+        <div class="login-info-badge">SENAPATI</div>
+        <h2 class="login-info-title">Sentral Navigasi Pengelolaan Agenda dan Tata Informasi</h2>
+        <p class="login-info-subtitle">Bupati Ponorogo</p>
+        <div class="login-info-features">
+          <div class="login-feature-item"><i class="bi bi-calendar2-check-fill"></i><span>Agenda Kegiatan Bupati Harian</span></div>
+          <div class="login-feature-item"><i class="bi bi-send-fill"></i><span>Sistem Disposisi Otomatis</span></div>
+          <div class="login-feature-item"><i class="bi bi-file-earmark-word-fill"></i><span>Template &amp; Generator Surat</span></div>
+          <div class="login-feature-item"><i class="bi bi-map-fill"></i><span>Peta Agenda Interaktif</span></div>
+          <div class="login-feature-item"><i class="bi bi-whatsapp"></i><span>Kirim Agenda via WhatsApp</span></div>
+          <div class="login-feature-item"><i class="bi bi-folder-fill"></i><span>Arsip Digital Google Drive</span></div>
+          <div class="login-feature-item"><i class="bi bi-people-fill"></i><span>Multi-Role: Admin &amp; Protokol</span></div>
+          <div class="login-feature-item"><i class="bi bi-shield-lock-fill"></i><span>Sesi Aman &amp; Terenkripsi</span></div>
+        </div>
+        <div class="login-info-footer">&copy; 2026 Pemerintah Kabupaten Ponorogo</div>
+      </div>
+
+      <!-- KOLOM KANAN: FORM LOGIN -->
+      <div class="login-form-panel">
+        <div class="login-form-inner">
+          <div class="login-form-logo">
+            <img src="/assets/icon-192.png" alt="Logo"
+              style="width:52px;height:52px;object-fit:contain;display:block;margin:0 auto 12px;">
+          </div>
+          <div class="login-title">
+            <h2>Masuk ke SENAPATI</h2>
+            <p>Masukkan kredensial akun Anda untuk melanjutkan</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" id="login-username" class="form-control" placeholder="Masukkan username"
+              autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div style="position:relative">
+              <input type="password" id="login-password" class="form-control" placeholder="Masukkan password"
+                autocomplete="current-password" />
+              <button type="button" onclick="togglePwd('login-password',this)"
+                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:rgba(255,255,255,.5)">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <button class="btn-login" onclick="doLogin()">
+            <i class="bi bi-box-arrow-in-right"></i> Masuk ke Sistem
+          </button>
+          <div class="login-badge"><i class="bi bi-shield-lock"></i> Akses aman &bull; Data terenkripsi</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Datalist pejabat disposisi — diisi dinamis dari sheet Pejabat Disposisi -->
+  <datalist id="list-pejabat-dynamic"></datalist>
+
+  <!-- APP SHELL -->
+  <div id="app-shell">
+    <nav id="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-icon"><img src="/assets/icon-192.png" alt="Logo"
+            style="width:100%;height:100%;object-fit:contain;" /></div>
+        <div class="brand-text">
+          <h4 style="letter-spacing: 1px;">SENAPATI</h4>
+          <p>Navigasi Agenda Bupati</p>
+        </div>
+      </div>
+      <div class="sidebar-section">Menu Utama</div>
+      <ul style="list-style:none;padding:0;margin:0">
+        <li class="nav-item">
+          <div class="nav-link-item active" data-page="dashboard" onclick="navigateTo('dashboard')"><i
+              class="bi bi-grid-1x2-fill"></i> Dashboard</div>
+        </li>
+        <li class="nav-item">
+          <div class="nav-link-item" data-page="agenda" onclick="navigateTo('agenda')"><i
+              class="bi bi-calendar2-check-fill"></i> Agenda Kegiatan</div>
+        </li>
+        <li class="nav-item">
+          <div class="nav-link-item" data-page="disposisi" onclick="navigateTo('disposisi')"><i class="bi bi-send-fill"
+              style="transform:rotate(-30deg);display:inline-block"></i> Disposisi</div>
+        </li>
+        <li class="nav-item">
+          <div class="nav-link-item" data-page="peta" onclick="navigateTo('peta')"><i class="bi bi-map-fill"></i> Peta
+            Agenda</div>
+        </li>
+      </ul>
+      <div class="sidebar-section">Surat &amp; Arsip</div>
+      <ul style="list-style:none;padding:0;margin:0">
+        <li class="nav-item">
+          <div class="nav-link-item" data-page="generator" onclick="navigateTo('generator')"><i
+              class="bi bi-file-earmark-word-fill"></i> Generator Surat</div>
+        </li>
+        <li class="nav-item">
+          <div class="nav-link-item" data-page="arsip" onclick="navigateTo('arsip')"><i class="bi bi-folder-fill"></i>
+            Arsip Digital</div>
+        </li>
+      </ul>
+      <div class="sidebar-section">Sistem &amp; Lainnya</div>
+      <ul style="list-style:none;padding:0;margin:0">
+        <li class="nav-item"><a class="nav-link-item" id="nav-panduan" onclick="navigateTo('panduan')"><i
+              class="bi bi-book"></i> Panduan Teknis</a></li>
+        <li class="nav-item">
+          <div class="nav-link-item" data-page="pengaturan" onclick="navigateTo('pengaturan')"><i
+              class="bi bi-gear-fill"></i> Pengaturan</div>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="avatar" id="user-avatar">A</div>
+          <div class="info">
+            <div class="name" id="user-nama">Administrator</div>
+            <div class="role" id="user-role">ADMIN</div>
+          </div>
+          <button class="logout-btn" onclick="doLogout()" title="Keluar"><i class="bi bi-box-arrow-right"></i></button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- TOPBAR -->
+    <header id="topbar">
+      <button id="hamburger" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div>
+        <h2 class="page-title" id="topbar-title">Dashboard</h2>
+        <div class="breadcrumb-text"><span id="topbar-sub">Overview</span></div>
+      </div>
+      <div class="topbar-right">
+        <button id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+          <i class="bi bi-moon-fill" id="theme-icon"></i>
+        </button>
+        <div class="topbar-time" id="clock">--:--</div>
+      </div>
+    </header>
+
+    <main id="main-content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="view active">
+        <div class="page-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Ringkasan data kearsipan sistem</p>
+          </div>
+          <button class="btn-primary-custom" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i>
+            Refresh</button>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(155px,1fr));">
+          <div class="stat-card c5" onclick="navigateTo('agenda')" style="cursor:pointer">
+            <div class="stat-icon"><i class="bi bi-calendar2-check-fill"></i></div>
+            <div class="stat-count" id="stat-agenda">—</div>
+            <div class="stat-label">Total Agenda</div>
+          </div>
+          <div class="stat-card c3" onclick="openDashAgendaModal('today')" style="cursor:pointer">
+            <div class="stat-icon"><i class="bi bi-calendar-event-fill"></i></div>
+            <div class="stat-count" id="stat-agenda-hari-ini">—</div>
+            <div class="stat-label">Agenda Hari Ini</div>
+          </div>
+          <div class="stat-card c2" onclick="openDashAgendaModal('tomorrow')" style="cursor:pointer">
+            <div class="stat-icon"><i class="bi bi-calendar-plus-fill"></i></div>
+            <div class="stat-count" id="stat-agenda-besok">—</div>
+            <div class="stat-label">Agenda Besok</div>
+          </div>
+          <div class="stat-card c5" onclick="openDashAgendaModal('week')" style="cursor:pointer">
+            <div class="stat-icon"><i class="bi bi-calendar-week-fill"></i></div>
+            <div class="stat-count" id="stat-agenda-minggu">—</div>
+            <div class="stat-label">Agenda Minggu Ini</div>
+          </div>
+          <div class="stat-card c4" style="cursor:pointer" onclick="navigateTo('disposisi')">
+            <div class="stat-icon"><i class="bi bi-send-fill"></i></div>
+            <div class="stat-count" id="stat-disposisi">—</div>
+            <div class="stat-label">Disposisi</div>
+          </div>
+          <div class="stat-card c1" onclick="openArsipModal()" style="cursor:pointer">
+            <div class="stat-icon"><i class="bi bi-folder-fill"></i></div>
+            <div class="stat-count" id="stat-arsip">—</div>
+            <div class="stat-label">Total Arsip</div>
+          </div>
+        </div>
+        <!-- Hidden counters untuk modal arsip — diisi oleh loadDashboard -->
+        <span id="stat-masuk" style="display:none">—</span>
+        <span id="stat-arsip-dokumen" style="display:none">—</span>
+
+        <!-- KALENDER AGENDA DASHBOARD -->
+        <div class="panel" style="margin-bottom:20px">
+          <div class="panel-header">
+            <h3><i class="bi bi-calendar3-fill" style="color:var(--primary)"></i> Kalender Agenda</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button onclick="dashCalPrev()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--text-main)"><i class="bi bi-chevron-left"></i></button>
+              <span id="dash-cal-label" style="font-weight:700;font-size:.9rem;min-width:140px;text-align:center"></span>
+              <button onclick="dashCalNext()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--text-main)"><i class="bi bi-chevron-right"></i></button>
+              <button onclick="dashCalToday()" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:.78rem;font-weight:700;cursor:pointer">Hari Ini</button>
+            </div>
+          </div>
+          <div class="panel-body" style="padding-top:0">
+            <div id="dash-calendar" class="dash-calendar"></div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <h3><i class="bi bi-lightning-charge-fill" style="color:var(--accent)"></i> Aksi Cepat</h3>
+            </div>
+            <div class="panel-body">
+              <div class="quick-actions">
+                <button class="qa-btn" onclick="navigateTo('agenda');setTimeout(()=>togglePanel('form-agenda'),200)">
+                  <i class="bi bi-calendar-plus-fill" style="color:var(--primary)"></i><span>Agenda Baru</span>
+                </button>
+                <button class="qa-btn" onclick="navigateTo('arsip')">
+                  <i class="bi bi-folder-fill" style="color:#0891b2"></i><span>Arsip Digital</span>
+                </button>
+                <button class="qa-btn" onclick="navigateTo('peta')">
+                  <i class="bi bi-map-fill" style="color:#16a34a"></i><span>Lihat Peta</span>
+                </button>
+                <button class="qa-btn" onclick="navigateTo('disposisi')">
+                  <i class="bi bi-send-fill" style="color:#7c3aed"></i><span>Disposisi</span>
+                </button>
+                <button class="qa-btn" onclick="navigateTo('panduan')">
+                  <i class="bi bi-book-fill" style="color:var(--accent)"></i><span>Panduan</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h3><i class="bi bi-info-circle-fill" style="color:var(--primary)"></i> Info Sistem</h3>
+            </div>
+            <div class="panel-body">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem"><span
+                    style="color:var(--text-muted)">Status Sistem</span><span
+                    style="color:var(--success);font-weight:700"><i class="bi bi-circle-fill"
+                      style="font-size:.5rem"></i> Online</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem"><span
+                    style="color:var(--text-muted)">Backend</span><span style="font-weight:600">Vercel API Route</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem"><span
+                    style="color:var(--text-muted)">Database</span><span style="font-weight:600">Google Sheets</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem"><span
+                    style="color:var(--text-muted)">Storage</span><span style="font-weight:600">Google Drive</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem"><span
+                    style="color:var(--text-muted)">Login sebagai</span><span style="font-weight:600"
+                    id="info-user">-</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem"><span
+                    style="color:var(--text-muted)">Tanggal</span><span style="font-weight:600" id="info-date">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARSIP -->
+
+      <!-- SURAT MASUK -->
+
+
+      <!-- AGENDA KEGIATAN -->
+      <div id="page-agenda" class="view">
+        <div class="page-header">
+          <div>
+            <h1>Agenda Kegiatan</h1>
+            <p>Rincian jadwal kegiatan Bupati Ponorogo per tanggal</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-secondary-custom" onclick="printPage()"><i class="bi bi-printer"></i> <span class="btn-text-hide">Cetak</span></button>
+            <button class="btn-wa-custom" onclick="openWAModal()"><i class="bi bi-whatsapp"></i> <span class="btn-text-hide">Kirim WA</span></button>
+            <button class="btn-primary-custom" onclick="togglePanel('form-agenda')"><i class="bi bi-calendar-plus"></i> <span class="btn-text-hide">Tambah Agenda</span></button>
+          </div>
+        </div>
+        <!-- Search bar agenda -->
+        <div style="margin-bottom:14px">
+          <div class="search-bar" style="max-width:420px">
+            <i class="bi bi-search"></i>
+            <input type="text" id="agenda-search" placeholder="Cari agenda, tanggal, lokasi, status..." oninput="filterAgenda(this.value)" />
+          </div>
+        </div>
+        <div class="panel" id="form-agenda" style="display:none">
+          <div class="panel-header">
+            <h3><i class="bi bi-calendar-event" style="color:var(--primary)"></i> Form Agenda Kegiatan</h3>
+            <button onclick="togglePanel('form-agenda')"
+              style="background:none;border:none;cursor:pointer;font-size:1.2rem"><i class="bi bi-x"></i></button>
+          </div>
+          <div class="panel-body">
+            <div class="form-group"><label>Nama Kegiatan <span class="req">*</span></label><input type="text"
+                class="form-control-custom" id="ag-nama" placeholder="Nama kegiatan" /></div>
+            <div class="form-group"><label>Tanggal <span class="req">*</span></label><input type="date"
+                class="form-control-custom" id="ag-tanggal" /></div>
+            <div class="form-row">
+              <div class="form-group"><label>Jam Mulai</label><input type="text" data-timepicker class="form-control-custom time-input" id="ag-jam-mulai" placeholder="--:--" readonly /></div>
+              <div class="form-group"><label>Jam Selesai</label>
+                <div style="display:flex;gap:8px">
+                  <input type="text" data-timepicker class="form-control-custom time-input" id="ag-jam-selesai" style="flex:1" placeholder="--:--" readonly />
+                  <button type="button" class="btn-secondary-custom" id="ag-jam-selesai-toggle" onclick="toggleJamSelesai('ag-jam-selesai', this)" style="padding:0 12px;font-size:0.75rem;white-space:nowrap">Teks Selesai</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group"><label>Lokasi</label><input type="text" class="form-control-custom" id="ag-lokasi"
+                placeholder="Lokasi kegiatan" /></div>
+            <div class="form-row">
+              <div class="form-group"><label>Pakaian</label><input type="text" class="form-control-custom"
+                  id="ag-pakaian" placeholder="Atribut pakaian" /></div>
+              <div class="form-group"><label>Transit</label><input type="text" class="form-control-custom"
+                  id="ag-transit" placeholder="Info transit" /></div>
+            </div>
+            <div class="form-group"><label>Keterangan</label><textarea class="form-control-custom" id="ag-keterangan"
+                rows="2"></textarea></div>
+
+            <!-- ── KOORDINAT LOKASI ── -->
+            <div
+              style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--body-bg);margin-bottom:4px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div
+                  style="font-size:.82rem;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:7px">
+                  <i class="bi bi-geo-alt-fill" style="color:#1e6fd9"></i> Koordinat Lokasi <span
+                    style="font-size:.72rem;font-weight:400;color:var(--text-muted)">(opsional)</span>
+                </div>
+                <button type="button" id="btn-pick-map-add" onclick="openPickMapModal('add')"
+                  style="display:flex;align-items:center;gap:6px;background:#1e6fd9;color:#fff;border:none;border-radius:8px;padding:5px 13px;font-size:.78rem;font-weight:700;cursor:pointer;transition:background .15s"
+                  onmouseover="this.style.background='#1558b0'" onmouseout="this.style.background='#1e6fd9'">
+                  <i class="bi bi-map"></i> Pilih di Peta
+                </button>
+              </div>
+              <div class="form-row" style="margin-bottom:0">
+                <div class="form-group" style="margin-bottom:0">
+                  <label style="font-size:.75rem">Latitude</label>
+                  <input type="number" step="any" class="form-control-custom" id="ag-lat" placeholder="Cth: -7.8648"
+                    oninput="syncPickMapPreview('add')" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label style="font-size:.75rem">Longitude</label>
+                  <input type="number" step="any" class="form-control-custom" id="ag-lng" placeholder="Cth: 111.4637"
+                    oninput="syncPickMapPreview('add')" />
+                </div>
+              </div>
+              <div id="ag-coord-preview"
+                style="display:none;margin-top:8px;font-size:.72rem;color:#16a34a;font-weight:600;display:flex;align-items:center;gap:5px">
+                <i class="bi bi-check-circle-fill"></i> <span id="ag-coord-preview-txt"></span>
+              </div>
+            </div>
+
+            <div class="form-group"><label>Teks Sambutan Bupati</label>
+              <textarea class="form-control-custom" id="ag-sambutan" rows="2"
+                placeholder="Ketik teks sambutan, atau upload file di bawah..."></textarea>
+              <div class="file-drop" id="ag-sambutan-drop" style="margin-top:8px">
+                <input type="file" id="ag-sambutan-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+                  onchange="handleFileSelect('ag-sambutan-file','ag-sambutan-file-info')" />
+                <div class="drop-icon" style="font-size:1.4rem"><i class="bi bi-file-earmark-arrow-up"></i></div>
+                <div class="drop-text" style="font-size:.78rem">Upload file sambutan (PDF/DOCX/Gambar, opsional)</div>
+                <div class="drop-name" id="ag-sambutan-file-info"></div>
+              </div>
+            </div>
+            <div class="form-group"><label>Daftar Sapaan / Undangan Pejabat</label>
+              <textarea class="form-control-custom" id="ag-sapaan" rows="2"
+                placeholder="Ketik daftar sapaan, atau upload file di bawah..."></textarea>
+              <div class="file-drop" id="ag-sapaan-drop" style="margin-top:8px">
+                <input type="file" id="ag-sapaan-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+                  onchange="handleFileSelect('ag-sapaan-file','ag-sapaan-file-info')" />
+                <div class="drop-icon" style="font-size:1.4rem"><i class="bi bi-file-earmark-arrow-up"></i></div>
+                <div class="drop-text" style="font-size:.78rem">Upload file sapaan (PDF/DOCX/Gambar, opsional)</div>
+                <div class="drop-name" id="ag-sapaan-file-info"></div>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group"><label>CP Nama</label><input type="text" class="form-control-custom" id="ag-cp-nama" placeholder="Nama personil / kontak..."></div>
+              <div class="form-group"><label>CP No WA</label><input type="text" class="form-control-custom" id="ag-cp-wa" placeholder="Cth: 08123456789"></div>
+            </div>
+            <div class="form-group">
+              <label>Lampirkan Surat/Undangan Asli</label>
+              <div class="file-drop" id="ag-drop">
+                <input type="file" id="ag-file" onchange="handleFileSelect('ag-file','ag-file-info')" />
+                <div class="drop-icon"><i class="bi bi-file-earmark-text"></i></div>
+                <div class="drop-text">Upload surat/undangan (PDF, gambar, dll)</div>
+                <div class="drop-name" id="ag-file-info"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Status Kehadiran <span class="req">*</span></label>
+              <select class="form-control-custom" id="ag-status" onchange="toggleDisposisiField()">
+                <option value="Hadir">Hadir</option>
+                <option value="Tidak Hadir">Tidak Hadir</option>
+                <option value="Disposisi">Disposisi</option>
+              </select>
+            </div>
+            <div class="form-group" id="ag-disposisi-card"
+              style="display:none;background:rgba(217,119,6,0.1);padding:15px;border-radius:8px;border:1px solid rgba(217,119,6,0.3)">
+              <label style="color:#b45309"><strong>Didisposisikan Kepada</strong></label>
+              <input type="text" class="form-control-custom" id="ag-disposisikepada" list="list-pejabat-dynamic"
+                placeholder="Cth: Asisten 1, Kadisdik..." />
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:15px">
+              <button class="btn-link-custom" onclick="togglePanel('form-agenda')">Batal</button>
+              <button class="btn-primary-custom" onclick="submitAgenda()"><i class="bi bi-save"></i> Simpan</button>
+            </div>
+          </div>
+        </div>
+        <!-- Timeline view -->
+        <div id="agenda-timeline" style="margin-top:4px"></div>
+        <!-- Fallback table (hidden when there's data) -->
+        <div class="panel" id="agenda-empty-panel" style="display:none">
+          <div class="panel-body" style="text-align:center;padding:40px">
+            <i class="bi bi-calendar-x" style="font-size:3rem;color:var(--text-muted)"></i>
+            <p style="margin-top:16px;color:var(--text-muted)">Belum ada agenda. Tambahkan agenda baru.</p>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- ARSIP DIGITAL -->
+      <div id="page-arsip" class="view">
+        <div class="page-header">
+          <div>
+            <h1>Arsip Digital</h1>
+            <p>Manajemen surat masuk dan dokumen arsip</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="arsip-header-actions">
+            <button class="btn-secondary-custom" onclick="printPage()"><i class="bi bi-printer"></i> <span class="btn-text-hide">Cetak</span></button>
+            <button class="btn-primary-custom" id="btn-arsip-tambah" onclick="togglePanel('form-masuk')"><i class="bi bi-plus-lg"></i> <span class="btn-text-hide">Tambah Surat Masuk</span></button>
+          </div>
+        </div>
+        <div class="custom-tabs" style="margin-bottom: 20px;">
+          <button class="custom-tab active" id="tab-arsip-masuk" onclick="setArsipTab('arsip-masuk')"><i class="bi bi-envelope-arrow-down-fill"></i> Surat Masuk</button>
+          <button class="custom-tab" id="tab-arsip-dokumen" onclick="setArsipTab('arsip-dokumen')"><i class="bi bi-folder-fill"></i> Dokumen Arsip</button>
+        </div>
+        <div id="content-arsip-masuk" class="tab-content" style="display:block;">
+        <div class="panel" id="form-masuk" style="display:none">
+          <div class="panel-header">
+            <h3><i class="bi bi-envelope-plus-fill" style="color:var(--primary)"></i> Input Surat Masuk</h3>
+            <button onclick="togglePanel('form-masuk')"
+              style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.2rem"><i
+                class="bi bi-x"></i></button>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group"><label>Nomor Surat <span class="req">*</span></label><input type="text"
+                  class="form-control-custom" id="sm-nomor" placeholder="No. surat" /></div>
+              <div class="form-group"><label>Tanggal Surat <span class="req">*</span></label><input type="date"
+                  class="form-control-custom" id="sm-tanggal" /></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Pengirim <span class="req">*</span></label><input type="text"
+                  class="form-control-custom" id="sm-pengirim" placeholder="Nama pengirim / instansi" /></div>
+              <div class="form-group"><label>Kategori</label><select class="form-control-custom" id="sm-kategori">
+                  <option value="Umum">Umum</option>
+                  <option value="Penting">Penting</option>
+                  <option value="Rahasia">Rahasia</option>
+                  <option value="Undangan">Undangan</option>
+                  <option value="Lainnya">Lainnya</option>
+                </select></div>
+            </div>
+            <div class="form-group"><label>Perihal <span class="req">*</span></label><input type="text"
+                class="form-control-custom" id="sm-perihal" placeholder="Perihal surat" /></div>
+            <div class="form-group"><label>Catatan</label><textarea class="form-control-custom" id="sm-catatan" rows="2"
+                placeholder="Catatan tambahan (opsional)"></textarea></div>
+            <div class="form-group">
+              <label>Lampiran</label>
+              <div class="file-drop" id="sm-drop"><input type="file" id="sm-file"
+                  onchange="handleFileSelect('sm-file','sm-file-info')" />
+                <div class="drop-icon"><i class="bi bi-paperclip"></i></div>
+                <div class="drop-text">Upload lampiran (opsional)</div>
+                <div class="drop-name" id="sm-file-info"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn-link-custom" onclick="togglePanel('form-masuk')">Batal</button>
+              <button class="btn-primary-custom" onclick="submitSuratMasuk()"><i class="bi bi-save"></i> Simpan</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <h3><i class="bi bi-envelope-arrow-down-fill" style="color:var(--primary)"></i> Daftar Surat Masuk</h3>
+            <div class="search-bar"><i class="bi bi-search"></i><input type="text" placeholder="Cari..."
+                oninput="filterTable('table-sm',this.value)" /></div>
+          </div>
+          <div class="custom-table-wrap">
+            <table class="custom-table" id="table-sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>No. Surat</th>
+                  <th>Tanggal</th>
+                  <th>Pengirim</th>
+                  <th>Perihal</th>
+                  <th>Kategori</th>
+                  <th>Lampiran</th>
+                  <th class="action-col">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-sm">
+                <tr class="no-data">
+                  <td colspan="8"><i class="bi bi-inbox"
+                      style="font-size:2rem;display:block;margin-bottom:8px"></i>Belum ada data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        </div>
+        <div id="content-arsip-dokumen" class="tab-content" style="display:none;">
+        <div class="panel" id="arsip-form-panel" style="display:none">
+          <div class="panel-header">
+            <h3><i class="bi bi-cloud-upload-fill" style="color:var(--primary)"></i> Upload Dokumen Arsip</h3>
+            <button onclick="togglePanel('arsip-form-panel')"
+              style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.2rem"><i
+                class="bi bi-x"></i></button>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group"><label>Nama File / Dokumen <span class="req">*</span></label><input type="text"
+                  class="form-control-custom" id="arsip-nama" placeholder="Nama dokumen arsip" /></div>
+              <div class="form-group"><label>Kategori <span class="req">*</span></label>
+                <select class="form-control-custom" id="arsip-kategori">
+                  <option value="">-- Pilih Kategori --</option>
+                  <optgroup label="Produk Hukum Bupati">
+                    <option value="Keputusan Bupati">Keputusan Bupati</option>
+                    <option value="Instruksi Bupati">Instruksi Bupati</option>
+                    <option value="Peraturan Bupati">Peraturan Bupati</option>
+                  </optgroup>
+                  <optgroup label="Administrasi Surat">
+                    <option value="Surat Edaran Bupati">Surat Edaran Bupati</option>
+                    <option value="Nota Dinas">Nota Dinas</option>
+                    <option value="Surat Tugas">Surat Tugas</option>
+                    <option value="Surat Perintah">Surat Perintah</option>
+                    <option value="Disposisi / Memo">Disposisi / Memo</option>
+                  </optgroup>
+                  <optgroup label="Lainnya">
+                    <option value="Lainnya">Lainnya</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="form-group"><label>Tanggal Arsip Asli <span class="req">*</span></label><input type="date"
+                  class="form-control-custom" id="arsip-tgl" /></div>
+            </div>
+            <div class="form-group"><label>Deskripsi</label><textarea class="form-control-custom" id="arsip-deskripsi"
+                rows="2" placeholder="Deskripsi singkat (opsional)"></textarea></div>
+            <div class="form-group">
+              <label>File Dokumen <span class="req">*</span></label>
+              <div class="file-drop" id="arsip-drop">
+                <input type="file" id="arsip-file" onchange="handleFileSelect('arsip-file','arsip-file-info')" />
+                <div class="drop-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+                <div class="drop-text">Klik atau seret file ke sini</div>
+                <div class="drop-text" style="font-size:.75rem;margin-top:4px">PDF, DOC, DOCX, JPG, PNG (Maks. 10MB)
+                </div>
+                <div class="drop-name" id="arsip-file-info"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn-link-custom" onclick="togglePanel('arsip-form-panel')">Batal</button>
+              <button class="btn-primary-custom" onclick="submitArsip()"><i class="bi bi-cloud-upload"></i> Upload
+                Arsip</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <h3><i class="bi bi-cloud-arrow-down-fill" style="color:var(--primary)"></i> Daftar Dokumen Arsip</h3>
+            <div class="search-bar"><i class="bi bi-search"></i><input type="text" placeholder="Cari arsip..."
+                oninput="filterTable('arsip-table',this.value)" /></div>
+          </div>
+          <div class="custom-table-wrap">
+            <table class="custom-table" id="arsip-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Nama File</th>
+                  <th>Kategori</th>
+                  <th>Folder</th>
+                  <th>Deskripsi</th>
+                  <th>Ukuran</th>
+                  <th>Tgl Arsip</th>
+                  <th>Tgl Upload</th>
+                  <th>Lampiran</th>
+                  <th class="action-col">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="arsip-tbody">
+                <tr class="no-data">
+                  <td colspan="10"><i class="bi bi-inbox"
+                      style="font-size:2rem;display:block;margin-bottom:8px"></i>Belum ada data arsip</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        </div>
+      </div>
+
+      <!-- GENERATOR SURAT -->
+      <div id="page-generator" class="view">
+        <div class="page-header" style="position:sticky;top:0;z-index:100;background:var(--body-bg);padding-bottom:0;margin-bottom:0;">
+          <div>
+            <h1>Generator Surat</h1>
+            <p>Buat dan kelola template surat resmi Bupati Ponorogo</p>
+          </div>
+        </div>
+        <div class="custom-tabs" style="margin-bottom:20px;position:sticky;top:68px;z-index:99;background:var(--body-bg);padding-top:8px;">
+          <button class="custom-tab active" id="tab-gen-buat" onclick="setGenTab('gen-buat')"><i class="bi bi-pencil-square"></i> Buat Surat</button>
+          <button class="custom-tab" id="tab-gen-template" onclick="setGenTab('gen-template')"><i class="bi bi-file-earmark-word-fill"></i> Template Surat</button>
+        </div>
+
+
+        <!-- TAB: BUAT SURAT (wizard 3 langkah) -->
+        <div id="content-gen-buat" class="tab-content" style="display:block;">
+
+          <!-- Wizard step bar -->
+          <div class="wizard-step-bar" id="wizard-step-bar">
+            <div class="wizard-step-item active" id="ws-item-1">
+              <div class="wizard-step-num">1</div>
+              <span class="wizard-step-label">Pilih Template</span>
+            </div>
+            <div class="wizard-step-item" id="ws-item-2">
+              <div class="wizard-step-num">2</div>
+              <span class="wizard-step-label">Isi Data</span>
+            </div>
+            <div class="wizard-step-item" id="ws-item-3">
+              <div class="wizard-step-num">3</div>
+              <span class="wizard-step-label">Download</span>
+            </div>
+          </div>
+
+          <!-- STEP 1: Pilih Template -->
+          <div id="buat-step1" class="wizard-content" style="display:block;">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-file-earmark-word-fill" style="color:#2B579A"></i> Langkah 1 — Pilih Template</h3>
+                <button class="btn-secondary-custom" style="padding:6px 12px;font-size:.8rem" onclick="loadTemplatesForGenerator()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+              </div>
+              <div class="panel-body">
+                <div id="generator-template-grid" class="template-grid">
+                  <div class="tpl-empty-state">
+                    <i class="bi bi-file-earmark-word"></i>
+                    <p>Belum ada template. <a onclick="setGenTab('gen-template')" style="color:var(--primary);cursor:pointer">Upload template terlebih dahulu.</a></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2: Isi Form -->
+          <div id="buat-step2" class="wizard-content" style="display:none;">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-pencil-fill" style="color:var(--accent)"></i> Langkah 2 — Isi Data Surat</h3>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <span id="gen-template-name" style="font-size:.82rem;color:var(--text-muted);background:var(--primary-xlt);padding:4px 10px;border-radius:20px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                  <button class="btn-secondary-custom" style="padding:6px 12px;font-size:.8rem" onclick="wizardGoTo(1)"><i class="bi bi-arrow-left"></i> Ganti Template</button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="tpl-info-box" style="margin-bottom:16px">
+                  <i class="bi bi-lightbulb-fill" style="color:var(--accent)"></i>
+                  <span style="font-size:.85rem">Isi semua field di bawah. Nilai yang Anda isi akan menggantikan variabel <code style="font-family:var(--mono)">&#123;&#123;variabel&#125;&#125;</code> di dalam template.</span>
+                </div>
+                <div id="dynamic-form-area" class="dynamic-form-area">
+                  <!-- JS inject form fields di sini -->
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap">
+                  <button class="btn-link-custom" onclick="wizardGoTo(1)"><i class="bi bi-arrow-left"></i> Kembali</button>
+                  <button class="btn-secondary-custom" onclick="previewDocument()"><i class="bi bi-eye"></i> Preview</button>
+                  <button class="btn-primary-custom" onclick="generateAndDownload('docx')"><i class="bi bi-file-earmark-word"></i> Unduh .docx</button>
+                  <button class="btn-primary-custom" style="background:var(--success)" onclick="wizardGoTo(3)"><i class="bi bi-arrow-right"></i> Lanjut</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: Preview & Download -->
+          <div id="buat-step3" class="wizard-content" style="display:none;">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-file-check-fill" style="color:var(--success)"></i> Langkah 3 — Preview &amp; Download</h3>
+                <button class="btn-secondary-custom" style="padding:6px 12px;font-size:.8rem" onclick="wizardGoTo(2)"><i class="bi bi-arrow-left"></i> Kembali Isi Data</button>
+              </div>
+              <div class="panel-body">
+                <div id="gen-data-summary" class="gen-summary-box"></div>
+                <div class="gen-action-row" id="gen-action-docx">
+                  <div class="gen-action-card" onclick="generateAndDownload('docx')">
+                    <div class="gen-action-icon" style="background:linear-gradient(135deg,#2B579A,#1a3d6e)"><i class="bi bi-file-earmark-word-fill"></i></div>
+                    <div class="gen-action-label">Unduh .docx</div>
+                    <div class="gen-action-desc">File Word siap edit</div>
+                  </div>
+                  <div class="gen-action-card" onclick="previewDocument()">
+                    <div class="gen-action-icon" style="background:linear-gradient(135deg,#dc2626,#991b1b)"><i class="bi bi-printer-fill"></i></div>
+                    <div class="gen-action-label">Preview &amp; Cetak PDF</div>
+                    <div class="gen-action-desc">Pratinjau &amp; cetak langsung</div>
+                  </div>
+                </div>
+                <div id="gen-status" style="display:none;text-align:center;padding:20px">
+                  <div class="spin" style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary-lt);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 12px"></div>
+                  <p id="gen-status-text" style="color:var(--text-muted);font-size:.9rem">Memproses dokumen...</p>
+                </div>
+                <div style="text-align:center;margin-top:24px">
+                  <button class="btn-secondary-custom" onclick="resetGenerator()"><i class="bi bi-arrow-counterclockwise"></i> Buat Surat Lain</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end content-gen-buat -->
+
+        <!-- TAB: TEMPLATE SURAT -->
+        <div id="content-gen-template" class="tab-content" style="display:none;">
+
+          <!-- Form Upload Template -->
+          <div class="panel" id="form-template" style="display:none;">
+            <div class="panel-header">
+              <h3><i class="bi bi-cloud-upload-fill" style="color:var(--primary)"></i> Upload Template .docx</h3>
+              <button onclick="togglePanel('form-template')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.2rem"><i class="bi bi-x"></i></button>
+            </div>
+            <div class="panel-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Nama Template <span class="req">*</span></label>
+                  <input type="text" class="form-control-custom" id="tpl-nama" placeholder="cth: Surat Keterangan Domisili" />
+                </div>
+                <div class="form-group">
+                  <label>Deskripsi</label>
+                  <input type="text" class="form-control-custom" id="tpl-deskripsi" placeholder="Deskripsi singkat template (opsional)" />
+                </div>
+              </div>
+
+              <div class="tpl-info-box">
+                <i class="bi bi-info-circle-fill" style="color:var(--info);font-size:1rem"></i>
+                <div>
+                  <strong>Cara penggunaan variabel:</strong> Di dalam file Word, tulis variabel dengan format
+                  <code style="background:var(--primary-xlt);padding:2px 6px;border-radius:4px;font-family:var(--mono);color:var(--primary)">&lbrace;&lbrace;nama_variabel&rbrace;&rbrace;</code><br>
+                  <span style="font-size:.8rem;color:var(--text-muted)">Contoh: <code>&lbrace;&lbrace;nama&rbrace;&rbrace;</code>, <code>&lbrace;&lbrace;nomor_surat&rbrace;&rbrace;</code>, <code>&lbrace;&lbrace;tanggal&rbrace;&rbrace;</code></span><br>
+                  <span style="font-size:.78rem;color:var(--text-muted)">
+                    <strong>Tipe input otomatis:</strong> awali dengan <code>date_</code> untuk date picker, <code>datetime_</code> untuk datetime, <code>select_Label_Opsi1_Opsi2</code> untuk dropdown, atau nama mengandung <em>keterangan/uraian</em> untuk textarea.
+                  </span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>File Template (.docx) <span class="req">*</span></label>
+                <div class="file-drop" id="tpl-drop">
+                  <input type="file" id="tpl-file" accept=".docx,.doc" onchange="handleTemplateFileSelect()" />
+                  <div class="drop-icon"><i class="bi bi-file-earmark-word"></i></div>
+                  <div class="drop-text">Klik atau seret file .docx ke sini</div>
+                  <div class="drop-text" style="font-size:.75rem;margin-top:4px;color:var(--text-muted)">Format .docx (Microsoft Word 2007+)</div>
+                  <div class="drop-name" id="tpl-file-info"></div>
+                </div>
+              </div>
+
+              <div id="tpl-vars-preview" style="display:none;">
+                <label style="display:block;margin-bottom:8px;font-weight:600;font-size:.85rem">
+                  <i class="bi bi-tags-fill" style="color:var(--accent)"></i> Variabel Terdeteksi:
+                </label>
+                <div id="tpl-vars-list" class="tpl-vars-container"></div>
+              </div>
+
+              <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                <button class="btn-link-custom" onclick="togglePanel('form-template')">Batal</button>
+                <button class="btn-primary-custom" onclick="submitTemplate()"><i class="bi bi-cloud-upload"></i> Simpan Template</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Daftar Template -->
+          <div class="panel">
+            <div class="panel-header" style="flex-wrap:wrap;gap:10px;">
+              <h3 style="flex:1;min-width:160px"><i class="bi bi-grid-fill" style="color:var(--primary)"></i> Koleksi Template</h3>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <div class="search-bar" style="min-width:180px"><i class="bi bi-search"></i><input type="text" placeholder="Cari template..." oninput="filterTemplateCards(this.value)" /></div>
+                <button class="btn-primary-custom" style="padding:7px 14px;font-size:.82rem;white-space:nowrap" onclick="togglePanel('form-template')"><i class="bi bi-cloud-upload"></i> Upload Template</button>
+              </div>
+            </div>
+            <div class="panel-body" style="padding-top:0">
+              <div id="template-grid" class="template-grid"></div>
+            </div>
+          </div>
+
+        </div><!-- end content-gen-template -->
+
+      </div><!-- end page-generator -->
+
+      <!-- DISPOSISI -->
+      <div id="page-disposisi" class="view">
+        <div class="page-header">
+          <div>
+            <h1>Sistem Disposisi</h1>
+            <p>Aliran disposisi kegiatan Bupati Ponorogo</p>
+          </div>
+          <button class="btn-primary-custom" onclick="togglePanel('form-disposisi')"><i class="bi bi-plus-lg"></i>
+            Tambah Disposisi</button>
+        </div>
+
+        <!-- Ringkasan Statistik Disposisi -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+          <div class="stat-card c4">
+            <div class="stat-icon"><i class="bi bi-send-fill"></i></div>
+            <div class="stat-count" id="disp-stat-total">—</div>
+            <div class="stat-label">Total Disposisi</div>
+          </div>
+          <div class="stat-card c5">
+            <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-count" id="disp-stat-proses">—</div>
+            <div class="stat-label">Diproses</div>
+          </div>
+          <div class="stat-card c3">
+            <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-count" id="disp-stat-selesai">—</div>
+            <div class="stat-label">Selesai</div>
+          </div>
+        </div>
+
+        <!-- Form Input Disposisi Manual -->
+        <div class="panel" id="form-disposisi" style="display:none">
+          <div class="panel-header">
+            <h3><i class="bi bi-send-fill" style="color:#7c3aed"></i> Form Disposisi Manual</h3>
+            <button onclick="togglePanel('form-disposisi')"
+              style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.3rem"><i
+                class="bi bi-x"></i></button>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label><i class="bi bi-people-fill" style="color:var(--text-muted)"></i> Ditujukan Kepada <span class="req">*</span></label>
+                <input type="text" class="form-control-custom" id="disp-kepada" list="list-pejabat-dynamic" placeholder="Cth: Sekretaris Daerah, Asisten 1..." />
+              </div>
+              <div class="form-group">
+                <label><i class="bi bi-person-fill" style="color:var(--text-muted)"></i> Disposisi Dari</label>
+                <input type="text" class="form-control-custom" id="disp-dari" value="Bupati" readonly style="background:var(--body-bg);opacity:.8" />
+              </div>
+            </div>
+            <div class="form-row-3">
+              <div class="form-group">
+                <label><i class="bi bi-calendar3" style="color:var(--text-muted)"></i> Tanggal Kegiatan <span class="req">*</span></label>
+                <input type="date" class="form-control-custom" id="disp-tanggal" />
+              </div>
+              <div class="form-group">
+                <label><i class="bi bi-clock" style="color:var(--text-muted)"></i> Jam Mulai</label>
+                <input type="text" data-timepicker class="form-control-custom time-input" id="disp-jam-mulai" placeholder="--:--" readonly />
+              </div>
+              <div class="form-group">
+                <label><i class="bi bi-clock-history" style="color:var(--text-muted)"></i> Jam Selesai</label>
+                <div style="display:flex;gap:8px">
+                  <input type="text" data-timepicker class="form-control-custom time-input" id="disp-jam-selesai" style="flex:1" placeholder="--:--" readonly />
+                  <button type="button" class="btn-secondary-custom" id="disp-jam-selesai-toggle" onclick="toggleJamSelesai('disp-jam-selesai', this)" style="padding:0 12px;font-size:0.75rem;white-space:nowrap">Teks Selesai</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><i class="bi bi-calendar-event" style="color:var(--text-muted)"></i> Nama Kegiatan <span class="req">*</span></label>
+              <input type="text" class="form-control-custom" id="disp-nama-kegiatan" placeholder="Nama kegiatan yang didisposisikan..." />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label><i class="bi bi-geo-alt" style="color:var(--text-muted)"></i> Lokasi / Tempat</label>
+                <input type="text" class="form-control-custom" id="disp-lokasi" placeholder="Lokasi kegiatan" />
+              </div>
+              <div class="form-group">
+                <label><i class="bi bi-person-bounding-box" style="color:var(--text-muted)"></i> Pakaian</label>
+                <input type="text" class="form-control-custom" id="disp-pakaian" placeholder="Atribut pakaian" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label><i class="bi bi-person-circle" style="color:var(--text-muted)"></i> CP Nama</label>
+                <input type="text" class="form-control-custom" id="disp-cp-nama" placeholder="Nama contact person" />
+              </div>
+              <div class="form-group">
+                <label><i class="bi bi-whatsapp" style="color:#25D366"></i> CP No WA</label>
+                <input type="tel" class="form-control-custom" id="disp-cp-wa" placeholder="08xxxxxxxxxx" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-hash" style="color:var(--text-muted)"></i> Referensi / Nomor Surat</label>
+              <input type="text" class="form-control-custom" id="disp-ref" placeholder="Nomor surat referensi (opsional)" />
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+              <button class="btn-link-custom" onclick="togglePanel('form-disposisi')">Batal</button>
+              <button class="btn-primary-custom" onclick="submitDisposisi()"><i class="bi bi-save"></i> Simpan Disposisi</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search + Refresh -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+          <div class="search-bar" style="flex:1;max-width:420px">
+            <i class="bi bi-search"></i>
+            <input type="text" id="disp-search" placeholder="Cari disposisi, kepada, kegiatan..." oninput="filterDisposisiCards(this.value)" />
+          </div>
+          <button class="btn-primary-custom" onclick="loadDisposisi()"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+
+        <!-- Card timeline disposisi -->
+        <div id="disp-timeline"></div>
+        <div id="disp-empty-panel" class="panel" style="display:none">
+          <div class="panel-body" style="text-align:center;padding:40px">
+            <i class="bi bi-send" style="font-size:3rem;color:var(--text-muted)"></i>
+            <p style="margin-top:16px;color:var(--text-muted)">Belum ada disposisi. Disposisi otomatis muncul saat agenda berstatus Disposisi.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PETA AGENDA -->
+      <div id="page-peta" class="view">
+        <!-- Peta container akan di-render oleh loadPeta() via JS -->
+        <div id="peta-agenda-root" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;height:100%">
+        </div>
+      </div>
+
+      <!-- PANDUAN TEKNIS -->
+      <div id="page-panduan" class="view">
+        <div class="page-header">
+          <div>
+            <h1>Panduan Teknis</h1>
+            <p>Dokumentasi lengkap penggunaan sistem SENAPATI</p>
+          </div>
+        </div>
+
+        <!-- HERO BANNER -->
+        <div class="panduan-hero">
+          <h2><i class="bi bi-book-half"></i> Dokumentasi SENAPATI</h2>
+          <p>Sentral Navigasi Pengelolaan Agenda dan Tata Informasi — Kabupaten Ponorogo.<br>Pelajari seluruh fitur yang tersedia untuk memaksimalkan pengelolaan agenda dan dokumen Bupati.</p>
+          <div class="panduan-hero-badges">
+            <span class="panduan-badge"><i class="bi bi-calendar2-check-fill"></i> Agenda Kegiatan</span>
+            <span class="panduan-badge"><i class="bi bi-send-fill"></i> Sistem Disposisi</span>
+            <span class="panduan-badge"><i class="bi bi-map-fill"></i> Peta Interaktif</span>
+            <span class="panduan-badge"><i class="bi bi-file-earmark-word-fill"></i> Template Surat</span>
+            <span class="panduan-badge"><i class="bi bi-whatsapp"></i> Kirim WA</span>
+            <span class="panduan-badge"><i class="bi bi-shield-lock-fill"></i> Multi-Role</span>
+          </div>
+        </div>
+
+        <!-- FEATURE OVERVIEW CARDS -->
+        <div class="panduan-grid">
+          <div class="panduan-feature-card">
+            <div class="panduan-feature-icon" style="background:rgba(15,76,129,.1)"><i class="bi bi-calendar2-check-fill" style="color:#0f4c81"></i></div>
+            <h4>Agenda Kegiatan Bupati</h4>
+            <p>Kelola jadwal kegiatan harian Bupati dengan timeline per tanggal. Status: Hadir, Tidak Hadir, dan Disposisi. Upload Sambutan, Sapaan, dan Lampiran per agenda.</p>
+          </div>
+          <div class="panduan-feature-card">
+            <div class="panduan-feature-icon" style="background:rgba(124,58,237,.1)"><i class="bi bi-send-fill" style="color:#7c3aed"></i></div>
+            <h4>Sistem Disposisi</h4>
+            <p>Disposisi otomatis saat status agenda diset ke Disposisi. Kirim WA ke ajudan, pejabat tujuan, atau nomor lain. Dropdown pejabat dari sheet yang bisa dikelola. Tandai selesai dengan foto bukti.</p>
+          </div>
+          <div class="panduan-feature-card">
+            <div class="panduan-feature-icon" style="background:rgba(30,111,217,.1)"><i class="bi bi-map-fill" style="color:#1e6fd9"></i></div>
+            <h4>Peta Agenda Interaktif</h4>
+            <p>Visualisasi lokasi agenda di peta OpenStreetMap. Filter hari ini, 1 minggu, 1 bulan, atau semua. Gambar rute dan area. 6 pilihan layer peta. Mode layar penuh.</p>
+          </div>
+          <div class="panduan-feature-card">
+            <div class="panduan-feature-icon" style="background:rgba(8,145,178,.1)"><i class="bi bi-file-earmark-word-fill" style="color:#0891b2"></i></div>
+            <h4>Template Surat &amp; Generator</h4>
+            <p>Upload template .docx dengan variabel <code>{{nama_variabel}}</code>. Wizard 3 langkah: Pilih Template &rarr; Isi Data &rarr; Preview &amp; Unduh. Deteksi variabel otomatis.</p>
+          </div>
+          <div class="panduan-feature-card">
+            <div class="panduan-feature-icon" style="background:rgba(26,127,90,.1)"><i class="bi bi-cloud-upload-fill" style="color:#1a7f5a"></i></div>
+            <h4>Arsip Digital &amp; Surat Masuk</h4>
+            <p>Upload dan simpan dokumen ke Google Drive dengan kategori terorganisir. Preview inline PDF, DOCX, dan Gambar langsung di browser tanpa keluar halaman.</p>
+          </div>
+          <div class="panduan-feature-card">
+            <div class="panduan-feature-icon" style="background:rgba(37,211,102,.1)"><i class="bi bi-whatsapp" style="color:#25D366"></i></div>
+            <h4>Kirim Agenda via WhatsApp</h4>
+            <p>Format pesan otomatis lengkap dengan detail agenda, link file, dan info CP. Kirim ke nomor WA akun aktif atau nomor lain. Pilih ajudan untuk disposisi.</p>
+          </div>
+        </div>
+
+        <!-- ACCORDION PANDUAN DETAIL -->
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">1</div>
+            <span class="panduan-accordion-title">Login, Role &amp; Navigasi</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Masuk ke Sistem</strong>
+                  <p>Akses SENAPATI melalui URL yang diberikan. Masukkan Username dan Password lalu klik <strong>Masuk ke Sistem</strong>. Sistem otomatis mengarahkan ke halaman sesuai role akun.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Role ADMIN</strong>
+                  <p>Diarahkan ke halaman utama dengan akses penuh: Dashboard, Agenda, Disposisi, Surat Masuk, Arsip Digital, Peta, Generator Surat, dan Pengaturan.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Role USER</strong>
+                  <p>Diarahkan ke halaman Protokol — tampilan read-only dengan dua menu: <strong>Agenda</strong> (lihat agenda hari ini, besok, kalender, dan peta lokasi) dan <strong>Peta</strong> (lihat lokasi agenda, read-only).</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Sesi Login</strong>
+                  <p>Sesi berlaku <strong>1 jam</strong>. Refresh atau reload halaman tidak memerlukan login ulang selama sesi masih aktif. Setelah 1 jam, sistem meminta login kembali secara otomatis.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Dark Mode</strong>
+                  <p>Klik ikon Bulan/Matahari di pojok kanan atas topbar untuk mengganti tema terang atau gelap. Preferensi tersimpan otomatis dan berlaku di semua halaman.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">2</div>
+            <span class="panduan-accordion-title">Agenda Kegiatan Bupati</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Tambah Agenda Baru</strong>
+                  <p>Klik <strong>+ Tambah Agenda</strong>. Isi Nama Kegiatan, Tanggal, Waktu (jam analog), Lokasi, Pakaian, Transit, Keterangan, Koordinat (pilih di peta), CP Nama &amp; No WA, dan Status Kehadiran.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Upload File per Agenda</strong>
+                  <p>Setiap agenda mendukung tiga jenis file: <strong>Lampiran</strong> (dokumen umum), <strong>Sambutan</strong> (teks sambutan Bupati), dan <strong>Sapaan</strong> (daftar pejabat yang disapa). Format yang didukung: PDF, DOCX, dan gambar.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Status Kehadiran</strong>
+                  <p><span style="color:#16a34a;font-weight:700">Hadir</span> — Bupati hadir langsung. <span style="color:#d97706;font-weight:700">Disposisi</span> — Bupati mendisposisikan ke pejabat lain, sistem otomatis membuat entri disposisi. <span style="color:#e11d48;font-weight:700">Tidak Hadir</span> — Bupati tidak hadir.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Kirim Agenda via WhatsApp</strong>
+                  <p>Klik <strong>Kirim ke WA</strong> di toolbar Agenda. Pilih tanggal, preview pesan terbentuk otomatis. Nomor penerima default adalah nomor WA akun yang sedang login. Bisa juga kirim ke nomor lain.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Kalender &amp; Timeline</strong>
+                  <p>Tampilan timeline per tanggal dengan dot warna sesuai status kehadiran. Klik tanggal di kalender dashboard untuk melihat detail agenda hari itu. Filter berdasarkan status tersedia di halaman Agenda.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">3</div>
+            <span class="panduan-accordion-title">Sistem Disposisi &amp; Kirim WA</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Disposisi Otomatis dari Agenda</strong>
+                  <p>Saat status agenda diset ke <strong>Disposisi</strong> dan diisi field <em>Didisposisikan Kepada</em>, sistem otomatis membuat entri disposisi. Data agenda (nama kegiatan, waktu, lokasi, pakaian, CP) ikut tersalin ke entri disposisi.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Disposisi Manual</strong>
+                  <p>Klik <strong>+ Tambah Disposisi</strong> di menu Disposisi. Isi Kepada (dari dropdown pejabat), Nama Kegiatan, Tanggal, Waktu, Lokasi, Pakaian, dan CP. Dropdown <em>Kepada</em> membaca langsung dari sheet <strong>Pejabat Disposisi</strong> yang dikelola di Pengaturan.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Kirim WA Disposisi</strong>
+                  <p>Klik <strong>Kirim WA</strong> pada item disposisi. Modal menampilkan tiga bagian:</p>
+                  <ul style="margin:6px 0 0 16px;font-size:.85rem;line-height:1.8">
+                    <li><strong>Ajudan yang Bertugas</strong> — centang satu atau lebih ajudan. Nama ajudan masuk ke baris "Ajudan bertugas" di pesan WA.</li>
+                    <li><strong>Akun Anda</strong> — kirim ke nomor WA akun yang sedang login.</li>
+                    <li><strong>Kirim ke Pejabat</strong> — tombol kirim langsung ke nomor WA setiap pejabat yang terdaftar di sheet Pejabat Disposisi (jika No WA diisi).</li>
+                    <li><strong>Nomor Lain</strong> — ketik nomor WA sembarang lalu klik Kirim.</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Tandai Selesai</strong>
+                  <p>Klik <strong>Selesai</strong> pada item disposisi. Isi keterangan pelaksanaan dan upload foto bukti (opsional). Status berubah menjadi <strong>Selesai</strong> dan foto tersimpan di Google Drive.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Data Ajudan</strong>
+                  <p>Kelola daftar ajudan di <strong>Pengaturan &rarr; Data Ajudan</strong>. Tambahkan nama dan nomor WA. Ajudan yang terdaftar muncul sebagai pilihan centang saat mengirim WA disposisi.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Pejabat Disposisi</strong>
+                  <p>Kelola daftar pejabat di <strong>Pengaturan &rarr; Pejabat Disposisi</strong>. Setiap pejabat memiliki kolom <strong>Jabatan</strong> (wajib), <strong>Nama</strong>, dan <strong>No WA</strong>. Data ini digunakan sebagai:</p>
+                  <ul style="margin:6px 0 0 16px;font-size:.85rem;line-height:1.8">
+                    <li>Sumber <strong>dropdown autocomplete</strong> di field "Ditujukan Kepada" pada form Agenda dan Disposisi.</li>
+                    <li>Tombol <strong>Kirim WA langsung</strong> ke pejabat di modal Kirim WA Disposisi (jika No WA diisi).</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">4</div>
+            <span class="panduan-accordion-title">Peta Agenda Interaktif</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Tampilan Peta</strong>
+                  <p>Buka menu <strong>Peta</strong>. Agenda yang memiliki koordinat lokasi ditampilkan sebagai marker berwarna sesuai status kehadiran. Default menampilkan agenda hari ini. Klik marker untuk melihat detail agenda.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Filter Rentang Waktu</strong>
+                  <p>Gunakan tombol <strong>Rentang &#9660;</strong> untuk memilih: <strong>1 Minggu</strong> (7 hari ke depan), <strong>1 Bulan</strong> (bulan berjalan), atau <strong>Semua</strong> agenda. Gunakan filter tanggal untuk memilih tanggal spesifik.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Pilihan Layer Peta</strong>
+                  <p>Klik ikon layer di kanan atas peta untuk memilih tampilan: <strong>OSM</strong> (standar), <strong>Satelit Esri</strong>, <strong>Google Sat</strong>, <strong>Google Hybrid</strong>, <strong>CartoDB</strong>, atau <strong>Topografi</strong>.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Gambar di Peta</strong>
+                  <p>Klik <strong>Gambar &amp; Ukur</strong> untuk membuka panel gambar. Buat <strong>Garis/Rute</strong> atau <strong>Area/Zona</strong>. Isi nama, keterangan, dan warna. Simpan ke database agar tampil ke semua pengguna.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Layar Penuh</strong>
+                  <p>Klik <strong>Layar Penuh</strong> di toolbar peta. Topbar disembunyikan dan peta mengisi seluruh layar. Klik tombol yang sama untuk kembali ke tampilan normal.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">5</div>
+            <span class="panduan-accordion-title">Template Surat &amp; Generator Dokumen</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Upload Template</strong>
+                  <p>Buka menu <strong>Generator Surat &rarr; Template Surat</strong>. Klik <strong>Upload Template</strong>. Unggah file <code>.docx</code> yang berisi variabel dengan format <code>{{nama_variabel}}</code>. Sistem mendeteksi semua variabel secara otomatis dari seluruh bagian dokumen.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Format Variabel Khusus</strong>
+                  <p>
+                    <code>{{date_tanggal}}</code> &rarr; input date picker (format Indonesia otomatis)<br>
+                    <code>{{datetime_waktu}}</code> &rarr; input datetime picker<br>
+                    <code>{{select_Label_Opsi1_Opsi2}}</code> &rarr; dropdown pilihan<br>
+                    Nama mengandung <code>keterangan</code> atau <code>uraian</code> &rarr; textarea
+                  </p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Buat Surat dari Template</strong>
+                  <p>Klik <strong>Buat Surat</strong> pada template yang dipilih. Ikuti wizard 3 langkah: <strong>1</strong> Pilih Template &rarr; <strong>2</strong> Isi semua variabel &rarr; <strong>3</strong> Preview visual dan unduh sebagai <code>.docx</code>.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">6</div>
+            <span class="panduan-accordion-title">Arsip Digital &amp; Surat Masuk</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Upload Dokumen Arsip</strong>
+                  <p>Menu <strong>Arsip Digital &rarr; Dokumen Arsip</strong>. Klik <strong>Upload Arsip</strong>. Isi Nama File, Kategori, Deskripsi, dan Tanggal. Seret file ke area upload. File tersimpan di Google Drive dan link tercatat otomatis di database.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Surat Masuk</strong>
+                  <p>Menu <strong>Arsip Digital &rarr; Surat Masuk</strong>. Tambah surat baru dengan nomor surat, tanggal, pengirim, perihal, kategori, dan lampiran. Setiap surat dapat disertai file softcopy.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Preview &amp; Unduh</strong>
+                  <p>Klik tombol <strong>Lihat</strong> pada kolom lampiran untuk preview dokumen inline (PDF, DOCX, Gambar) tanpa keluar halaman. Klik <strong>Unduh</strong> untuk membuka link Google Drive langsung.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Cetak Laporan</strong>
+                  <p>Klik <strong>Cetak</strong> di pojok kanan atas halaman Arsip untuk mencetak rekapitulasi data dalam format siap cetak dengan kop surat.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num">7</div>
+            <span class="panduan-accordion-title">Pengaturan Sistem &amp; Manajemen Akun</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Kelola Pengguna</strong>
+                  <p>Tab <strong>Kelola Pengguna</strong> di Pengaturan. Tambah akun baru dengan Nama, Username, Password, Role (ADMIN/USER), dan Nomor WhatsApp. Klik <strong>Lihat Daftar Pengguna</strong> untuk melihat, mencari, dan mengelola semua akun berdasarkan role.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Role Pengguna</strong>
+                  <p><strong>ADMIN</strong> — akses penuh ke semua fitur. <strong>USER</strong> — hanya akses halaman Protokol (read-only: lihat agenda dan peta). Sistem otomatis mengarahkan ke halaman sesuai role saat login.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Ganti Password</strong>
+                  <p>Panel <strong>Ganti Password</strong> tersedia di tab Kelola Pengguna. Masukkan password lama, password baru, dan konfirmasi. Berlaku untuk akun yang sedang login.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Data Ajudan</strong>
+                  <p>Tab <strong>Data Ajudan</strong> — kelola daftar ajudan Bupati (nama dan nomor WA). Ajudan yang terdaftar muncul sebagai pilihan centang saat mengirim WA disposisi untuk mengisi baris "Ajudan bertugas" di pesan.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Pejabat Disposisi</strong>
+                  <p>Tab <strong>Pejabat Disposisi</strong> — kelola daftar pejabat yang menjadi tujuan disposisi. Kolom: <strong>Jabatan</strong> (wajib), <strong>Nama</strong>, <strong>No WA</strong>. Klik <strong>Lihat Daftar Pejabat</strong> untuk membuka jendela dengan fitur pencarian (jabatan, nama, No WA). Data ini digunakan sebagai sumber dropdown di form Agenda &amp; Disposisi, dan sebagai tombol kirim WA langsung di modal Kirim WA Disposisi.</p>
+                </div>
+              </div>
+              <div class="panduan-step">
+                <div class="panduan-step-dot"></div>
+                <div class="panduan-step-text"><strong>Inisialisasi Database</strong>
+                  <p>Tab <strong>Database</strong> — gunakan tombol <strong>Inisialisasi Database</strong> jika ada sheet yang hilang atau perlu dibuat ulang. Proses ini tidak menghapus data yang sudah ada. Sheet yang dikelola: Users, Surat Masuk, Agenda, Disposisi, Arsip, Template Surat, Peta Drawings, Ajudan, <strong>Pejabat Disposisi</strong>.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CREDIT ACCORDION -->
+        <div class="panduan-accordion">
+          <div class="panduan-accordion-header" onclick="togglePanduanAccordion(this)">
+            <div class="panduan-accordion-num" style="background:linear-gradient(135deg,#1a7f5a,#16a34a)"><i class="bi bi-code-slash" style="font-size:.75rem"></i></div>
+            <span class="panduan-accordion-title" style="font-size:.88rem;color:var(--text-muted);">Pengembang Aplikasi</span>
+            <i class="bi bi-chevron-down panduan-accordion-arrow"></i>
+          </div>
+          <div class="panduan-accordion-body">
+            <div class="panduan-accordion-inner">
+              <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;padding:16px 0">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+                  <img src="/assets/basith.jpeg" alt="Ahmad Abdul Basith"
+                    style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #16a34a;box-shadow:var(--shadow-md)">
+                  <div>
+                    <div style="font-size:1rem;font-weight:800;color:var(--text-main)">Ahmad Abdul Basith, S.Tr.I.P</div>
+                    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px">Developer</div>
+                    <a href="https://wa.me/6285159686554" target="_blank" class="btn-primary-custom"
+                      style="text-decoration:none;font-size:.78rem;padding:7px 15px;background:linear-gradient(135deg,#1a7f5a,#16a34a);">
+                      <i class="bi bi-whatsapp"></i> Hubungi via WhatsApp
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:8px;">&#169; 2026 SENAPATI &mdash; Pemerintah Kabupaten Ponorogo.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="page-pengaturan" class="view">
+        <div class="page-header">
+          <div>
+            <h1>Pengaturan Sistem</h1>
+            <p>Konfigurasi pengguna dan format pencetakan</p>
+          </div>
+        </div>
+
+        <div class="custom-tabs pg-tabs" style="margin-bottom: 20px;">
+          <button class="custom-tab active" id="tab-pg-user" onclick="setPgTab('pg-user')" title="Kelola Pengguna"><i class="bi bi-people-fill"></i> <span class="pg-tab-label">Kelola Pengguna</span></button>
+          <button class="custom-tab" id="tab-pg-ajudan" onclick="setPgTab('pg-ajudan')" title="Data Ajudan"><i class="bi bi-person-badge-fill"></i> <span class="pg-tab-label">Data Ajudan</span></button>
+          <button class="custom-tab" id="tab-pg-pejabat" onclick="setPgTab('pg-pejabat')" title="Pejabat Disposisi"><i class="bi bi-briefcase-fill"></i> <span class="pg-tab-label">Pejabat Disposisi</span></button>
+          <button class="custom-tab" id="tab-pg-sistem" onclick="setPgTab('pg-sistem')" title="Database"><i class="bi bi-database-fill"></i> <span class="pg-tab-label">Database</span></button>
+        </div>
+
+        <!-- PENGATURAN USER -->
+        <div id="content-pg-user" class="tab-content" style="display:block;">
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-person-plus-fill" style="color:var(--primary)"></i> Tambah Pengguna</h3>
+              </div>
+              <div class="panel-body">
+                <div class="form-group"><label>Nama Lengkap <span class="req">*</span></label><input type="text"
+                    class="form-control-custom" id="new-nama" placeholder="Nama lengkap" /></div>
+                <div class="form-group"><label>Username <span class="req">*</span></label><input type="text"
+                    class="form-control-custom" id="new-username" placeholder="Username login" /></div>
+                <div class="form-group"><label>Password <span class="req">*</span></label>
+                  <div style="position:relative"><input type="password" class="form-control-custom" id="new-password"
+                      placeholder="Password" /><button type="button" onclick="togglePwd('new-password',this)"
+                      style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--text-muted)"><i
+                        class="bi bi-eye"></i></button></div>
+                </div>
+                <div class="form-group"><label>Role</label><select class="form-control-custom" id="new-role">
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="USER">USER</option>
+                  </select></div>
+                <div class="form-group">
+                  <label><i class="bi bi-whatsapp" style="color:#25D366"></i> No. WhatsApp</label>
+                  <div style="position:relative">
+                    <input type="tel" class="form-control-custom" id="new-nowa" placeholder="081234567890" />
+                  </div>
+                  <small style="color:var(--text-muted);font-size:.72rem;margin-top:4px;display:block">Contoh:
+                    081234567890. Untuk pengiriman agenda harian.</small>
+                </div>
+                <button class="btn-primary-custom" style="width:100%" onclick="submitAddUser()"><i
+                    class="bi bi-person-plus"></i> Tambah Pengguna</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-key-fill" style="color:var(--accent)"></i> Ganti Password</h3>
+              </div>
+              <div class="panel-body">
+                <div class="form-group"><label>Username</label><input type="text" class="form-control-custom"
+                    id="chg-username" readonly /></div>
+                <div class="form-group"><label>Password Lama <span class="req">*</span></label><input type="password"
+                    class="form-control-custom" id="chg-old" placeholder="Password saat ini" /></div>
+                <div class="form-group"><label>Password Baru <span class="req">*</span></label><input type="password"
+                    class="form-control-custom" id="chg-new" placeholder="Password baru" /></div>
+                <div class="form-group"><label>Konfirmasi <span class="req">*</span></label><input type="password"
+                    class="form-control-custom" id="chg-confirm" placeholder="Ulangi password baru" /></div>
+                <button class="btn-primary-custom" style="width:100%" onclick="submitChangePassword()"><i
+                    class="bi bi-key"></i> Ganti Password</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+              <h3><i class="bi bi-people-fill" style="color:var(--primary)"></i> Daftar Pengguna</h3>
+              <button class="btn-primary-custom" onclick="openUsersModal()">
+                <i class="bi bi-people"></i> Lihat Daftar Pengguna
+              </button>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- DATA AJUDAN -->
+        <div id="content-pg-ajudan" class="tab-content" style="display:none;">
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-person-badge-fill" style="color:#7c3aed"></i> Tambah Ajudan</h3>
+              </div>
+              <div class="panel-body">
+                <div class="form-group">
+                  <label>Nama Ajudan <span class="req">*</span></label>
+                  <input type="text" class="form-control-custom" id="aj-nama" placeholder="Nama lengkap ajudan" />
+                </div>
+                <div class="form-group">
+                  <label><i class="bi bi-whatsapp" style="color:#25D366"></i> No. WhatsApp <span class="req">*</span></label>
+                  <input type="tel" class="form-control-custom" id="aj-nowa" placeholder="08xxxxxxxxxx" />
+                  <small style="color:var(--text-muted);font-size:.72rem;margin-top:4px;display:block">Contoh: 081234567890</small>
+                </div>
+                <button class="btn-primary-custom" style="width:100%" onclick="submitAddAjudan()">
+                  <i class="bi bi-person-plus"></i> Tambah Ajudan
+                </button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-info-circle-fill" style="color:var(--primary)"></i> Informasi</h3>
+              </div>
+              <div class="panel-body">
+                <div style="font-size:.85rem;color:var(--text-muted);line-height:1.7">
+                  <p style="margin:0 0 10px"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> Data ajudan yang ditambahkan di sini akan muncul sebagai pilihan dropdown di modal <strong>Kirim WA Disposisi</strong>.</p>
+                  <p style="margin:0 0 10px"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> Bisa memilih <strong>lebih dari satu ajudan</strong> sekaligus saat kirim WA.</p>
+                  <p style="margin:0"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> Format otomatis: <code style="font-size:.78rem">Basith (085xxx) dan Ahmad (081xxx)</code></p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+              <h3><i class="bi bi-people-fill" style="color:#7c3aed"></i> Daftar Ajudan</h3>
+              <button class="btn-primary-custom" onclick="loadAjudan()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+            </div>
+            <div class="custom-table-wrap">
+              <table class="custom-table" id="table-ajudan">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nama</th>
+                    <th>No WA</th>
+                    <th class="action-col">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-ajudan">
+                  <tr class="no-data"><td colspan="4">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATA PEJABAT DISPOSISI -->
+        <div id="content-pg-pejabat" class="tab-content" style="display:none;">
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-briefcase-fill" style="color:#0891b2"></i> Tambah Pejabat</h3>
+              </div>
+              <div class="panel-body">
+                <div class="form-group">
+                  <label>Jabatan <span class="req">*</span></label>
+                  <input type="text" class="form-control-custom" id="pj-jabatan" placeholder="Cth: Sekretaris Daerah" />
+                </div>
+                <div class="form-group">
+                  <label>Nama Pejabat</label>
+                  <input type="text" class="form-control-custom" id="pj-nama" placeholder="Nama lengkap (opsional)" />
+                </div>
+                <div class="form-group">
+                  <label><i class="bi bi-whatsapp" style="color:#25D366"></i> No. WhatsApp</label>
+                  <input type="tel" class="form-control-custom" id="pj-nowa" placeholder="08xxxxxxxxxx" />
+                  <small style="color:var(--text-muted);font-size:.72rem;margin-top:4px;display:block">Untuk kirim WA disposisi langsung ke pejabat</small>
+                </div>
+                <button class="btn-primary-custom" style="width:100%" onclick="submitAddPejabat()">
+                  <i class="bi bi-plus-lg"></i> Tambah Pejabat
+                </button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3><i class="bi bi-info-circle-fill" style="color:var(--primary)"></i> Informasi</h3>
+              </div>
+              <div class="panel-body">
+                <div style="font-size:.85rem;color:var(--text-muted);line-height:1.7">
+                  <p style="margin:0 0 10px"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> Data pejabat di sini menjadi <strong>sumber dropdown</strong> di field "Ditujukan Kepada" pada form Agenda &amp; Disposisi.</p>
+                  <p style="margin:0 0 10px"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> Jika No. WA diisi, tombol <strong>Kirim WA langsung</strong> ke pejabat tersebut akan muncul di modal Kirim WA Disposisi.</p>
+                  <p style="margin:0"><i class="bi bi-check-circle-fill" style="color:var(--success)"></i> Kolom: <strong>Jabatan</strong> (wajib), <strong>Nama</strong>, <strong>No WA</strong></p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+              <h3><i class="bi bi-people-fill" style="color:#0891b2"></i> Daftar Pejabat Disposisi</h3>
+              <button class="btn-primary-custom" onclick="openPejabatModal()">
+                <i class="bi bi-people"></i> Lihat Daftar Pejabat
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PENGATURAN SISTEM / DATABASE -->
+        <div id="content-pg-sistem" class="tab-content" style="display:none;">
+          <!-- Inisialisasi Database -->
+          <div class="db-danger-zone">
+            <div class="db-danger-title"><i class="bi bi-exclamation-triangle-fill"></i>
+              <h3>Zona Bahaya: Inisialisasi Database</h3>
+            </div>
+            <p class="db-danger-desc">Tombol di bawah ini akan membangun ulang struktur Tab (Sheet) pada Google
+              Spreadsheet yang digunakan sebagai database SENAPATI. Gunakan hanya jika ada Sheet yang hilang atau
+              perlu dibuat ulang dari awal.</p>
+            <div class="db-info-card"><i class="bi bi-info-circle-fill"></i><span>Proses ini <strong>tidak
+                  menghapus</strong> data yang sudah ada. Ia hanya memastikan semua sheet yang diperlukan tersedia dengan header yang benar.</span></div>
+            <div class="db-info-card" style="margin-top:8px"><i class="bi bi-shield-exclamation"></i><span>Pastikan variabel lingkungan
+                <code>GOOGLE_SHEET_ID</code> dan <code>GOOGLE_SERVICE_ACCOUNT_KEY</code> sudah terkonfigurasi dengan
+                benar di Vercel sebelum menjalankan ini.</span></div>
+            <button class="btn-danger-custom" style="margin-top:16px;" onclick="setupDatabase()"><i
+                class="bi bi-gear-fill"></i> Inisialisasi Database</button>
+          </div>
+
+          <!-- Hard Refresh / Clear Cache -->
+          <div class="panel" style="margin-top:20px">
+            <div class="panel-header">
+              <h3><i class="bi bi-arrow-clockwise" style="color:var(--primary)"></i> Refresh Paksa (Hard Refresh)</h3>
+            </div>
+            <div class="panel-body">
+              <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+                Hapus seluruh cache browser, Service Worker, dan muat ulang aplikasi langsung dari server. Berguna jika tampilan atau fitur tidak berubah setelah pembaruan — terutama di HP Android Chrome yang sering menyimpan cache agresif.
+              </p>
+              <div class="db-info-card" style="margin-bottom:10px"><i class="bi bi-layers-fill" style="color:var(--primary)"></i><span>Proses: <strong>Matikan SW → Hapus Cache → Fetch ulang dari server → Reload paksa</strong></span></div>
+              <div class="db-info-card" style="margin-bottom:10px"><i class="bi bi-phone-fill"></i><span>Di HP, gunakan tombol ini sebagai pengganti <strong>Ctrl+Shift+R</strong> / <strong>Ctrl+F5</strong> di PC — jauh lebih powerfull.</span></div>
+              <div class="db-info-card" style="margin-bottom:16px;border-color:rgba(217,119,6,.3);background:rgba(217,119,6,.06)"><i class="bi bi-exclamation-circle-fill" style="color:var(--warning)"></i><span>Halaman akan ditutup dan dibuka ulang. Anda perlu login kembali jika sesi sudah habis.</span></div>
+              <button class="btn-primary-custom" onclick="doHardRefresh()" id="btn-hard-refresh">
+                <i class="bi bi-arrow-clockwise"></i> Hard Refresh Sekarang
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- =====================================================
+           PAGE: TEMPLATE SURAT
+           ===================================================== -->
+
+      <!-- =====================================================
+           PAGE: BUAT SURAT
+           ===================================================== -->
+
+    </main>
+  </div>
+
+  <!-- MODAL DAFTAR PENGGUNA -->
+  <div id="users-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;">
+    <div style="background:var(--card-bg);border-radius:var(--radius);width:100%;max-width:820px;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);border:1px solid var(--border);overflow:hidden;animation:fadeUp .3s ease">
+
+      <!-- Header -->
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;flex-wrap:wrap">
+        <h3 style="font-size:1rem;font-weight:800;color:var(--text-main);display:flex;align-items:center;gap:8px;margin:0">
+          <i class="bi bi-people-fill" style="color:var(--primary)"></i> Daftar Pengguna
+        </h3>
+        <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:0;justify-content:flex-end;flex-wrap:wrap">
+          <!-- Search -->
+          <div class="search-bar" style="min-width:200px;max-width:280px">
+            <i class="bi bi-search"></i>
+            <input type="text" id="users-search" placeholder="Cari nama, username, No WA..." oninput="filterUsersModal(this.value)" />
+          </div>
+          <button class="btn-secondary-custom" style="padding:6px 12px;font-size:.8rem;white-space:nowrap" onclick="loadUsers()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button onclick="closeUsersModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;line-height:1;padding:4px 8px;border-radius:8px;flex-shrink:0" title="Tutup">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Role Tabs -->
+      <div style="padding:10px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--body-bg)">
+        <div style="display:flex;gap:4px">
+          <button id="utab-all" class="utab active" onclick="setUsersTab('all')" style="padding:8px 18px;border:none;background:var(--card-bg);border-radius:10px 10px 0 0;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--primary);border-bottom:2px solid var(--primary);font-family:var(--font)">
+            <i class="bi bi-people-fill"></i> Semua
+          </button>
+          <button id="utab-admin" class="utab" onclick="setUsersTab('ADMIN')" style="padding:8px 18px;border:none;background:transparent;border-radius:10px 10px 0 0;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;font-family:var(--font)">
+            <i class="bi bi-shield-fill"></i> Admin
+          </button>
+          <button id="utab-user" class="utab" onclick="setUsersTab('USER')" style="padding:8px 18px;border:none;background:transparent;border-radius:10px 10px 0 0;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;font-family:var(--font)">
+            <i class="bi bi-person-fill"></i> User
+          </button>
+        </div>
+      </div>
+
+      <!-- Count info -->
+      <div id="users-count-bar" style="padding:8px 20px;font-size:.78rem;color:var(--text-muted);flex-shrink:0;background:var(--body-bg);border-bottom:1px solid var(--border)">
+        Memuat data...
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-y:auto;flex:1">
+        <div class="custom-table-wrap">
+          <table class="custom-table" id="table-users">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>No WA</th>
+                <th>Dibuat Pada</th>
+                <th class="action-col">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-users">
+              <tr class="no-data">
+                <td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted)">
+                  <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.4"></i>
+                  Klik Refresh untuk memuat data pengguna
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0">
+        <button class="btn-secondary-custom" onclick="closeUsersModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DAFTAR PEJABAT DISPOSISI -->
+  <div id="pejabat-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px;">
+    <div style="background:var(--card-bg);border-radius:var(--radius);width:100%;max-width:760px;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);border:1px solid var(--border);overflow:hidden;animation:fadeUp .3s ease">
+
+      <!-- Header -->
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;flex-wrap:wrap">
+        <h3 style="font-size:1rem;font-weight:800;color:var(--text-main);display:flex;align-items:center;gap:8px;margin:0">
+          <i class="bi bi-briefcase-fill" style="color:#0891b2"></i> Daftar Pejabat Disposisi
+        </h3>
+        <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:0;justify-content:flex-end;flex-wrap:wrap">
+          <div class="search-bar" style="min-width:200px;max-width:300px">
+            <i class="bi bi-search"></i>
+            <input type="text" id="pejabat-search" placeholder="Cari jabatan, nama, No WA..." oninput="filterPejabatModal(this.value)" />
+          </div>
+          <button class="btn-secondary-custom" style="padding:6px 12px;font-size:.8rem;white-space:nowrap" onclick="loadPejabatDisposisi()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+          </button>
+          <button onclick="closePejabatModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;line-height:1;padding:4px 8px;border-radius:8px;flex-shrink:0" title="Tutup">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Count bar -->
+      <div id="pejabat-count-bar" style="padding:8px 20px;font-size:.78rem;color:var(--text-muted);flex-shrink:0;background:var(--body-bg);border-bottom:1px solid var(--border)">
+        Memuat data...
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-y:auto;flex:1">
+        <div class="custom-table-wrap">
+          <table class="custom-table" id="table-pejabat">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Jabatan</th>
+                <th>Nama</th>
+                <th>No WA</th>
+                <th class="action-col">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-pejabat">
+              <tr class="no-data">
+                <td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">
+                  <i class="bi bi-briefcase" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.4"></i>
+                  Klik Refresh untuk memuat data
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0">
+        <button class="btn-secondary-custom" onclick="closePejabatModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WA KIRIM AGENDA MODAL -->
+  <div id="wa-modal"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div class="wa-modal-box">
+      <div class="wa-modal-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div
+            style="width:44px;height:44px;background:linear-gradient(135deg,#25D366,#128C7E);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;flex-shrink:0">
+            <i class="bi bi-whatsapp"></i>
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1rem;font-weight:800;color:var(--text-main)">Kirim Agenda ke WhatsApp</h3>
+            <p style="margin:0;font-size:.73rem;color:var(--text-muted)">Format harian otomatis via wa.me</p>
+          </div>
+        </div>
+        <button onclick="closeWAModal()"
+          style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;line-height:1"><i
+            class="bi bi-x"></i></button>
+      </div>
+      <div class="wa-modal-body">
+        <div class="form-group" style="margin-bottom:12px">
+          <label style="font-size:.82rem;font-weight:700">Tanggal Agenda</label>
+          <input type="date" class="form-control-custom" id="wa-tanggal" onchange="loadWAPreview(this.value)" />
+        </div>
+
+        <!-- TOGGLE KONTEN PESAN -->
+        <div style="background:var(--body-bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span style="font-size:.82rem;color:var(--text-main);display:flex;align-items:center;gap:7px">
+            <i class="bi bi-paperclip" style="color:var(--text-muted)"></i>
+            Sertakan sambutan, sapaan &amp; link file
+          </span>
+          <label class="wa-toggle-switch" style="margin:0">
+            <input type="checkbox" id="wa-toggle-extras" checked onchange="loadWAPreview(document.getElementById('wa-tanggal').value)">
+            <span class="wa-toggle-knob"></span>
+          </label>
+        </div>
+
+        <div class="wa-preview-box" id="wa-preview-box">
+          <div style="text-align:center;padding:30px;color:var(--text-muted)">
+            <i class="bi bi-whatsapp" style="font-size:2.5rem;display:block;margin-bottom:10px;opacity:.4"></i>
+            <span style="font-size:.85rem">Pilih tanggal untuk melihat preview pesan...</span>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div
+            style="font-size:.82rem;font-weight:700;color:var(--text-main);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <i class="bi bi-people-fill" style="color:var(--primary)"></i> Daftar Penerima
+          </div>
+          <div id="wa-recipients-list">
+            <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:.82rem">Memuat daftar
+              pengguna...</div>
+          </div>
+          
+          <!-- Input Nomor WA Lainnya -->
+          <div style="background:var(--body-bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px">Atau kirim ke nomor lain:</label>
+            <div style="display:flex;gap:8px">
+              <input type="tel" id="wa-custom-no" class="form-control-custom" placeholder="08xxxxxxxxxx" style="flex:1" />
+              <button class="btn-wa-custom" style="padding:8px 14px;font-size:.82rem" onclick="sendWACustom()"><i class="bi bi-send"></i> Kirim</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wa-modal-footer">
+        <button class="btn-link-custom" onclick="closeWAModal()">Tutup</button>
+        <button class="btn-wa-custom" onclick="sendAllWA()" id="btn-send-all-wa"
+          style="opacity:.5;pointer-events:none"><i class="bi bi-send-fill"></i> Buka Semua WA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SET NO WA USER -->
+  <div id="wa-set-modal"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div class="card" style="width:100%;max-width:400px;padding:28px;position:relative">
+      <button onclick="closeSetWAModal()"
+        style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted)"><i
+          class="bi bi-x"></i></button>
+      <h3 style="margin:0 0 6px;font-size:1rem;font-weight:800"><i class="bi bi-whatsapp" style="color:#25D366"></i> Set
+        No. WhatsApp</h3>
+      <p id="wa-set-user-label" style="font-size:.8rem;color:var(--text-muted);margin:0 0 16px"></p>
+      <input type="hidden" id="wa-set-user-id" />
+      <div class="form-group">
+        <label style="font-size:.82rem;font-weight:600">Nomor WhatsApp</label>
+        <div style="position:relative">
+          <input type="tel" class="form-control-custom" id="wa-set-nowa" placeholder="081234567890" />
+        </div>
+        <small style="color:var(--text-muted);font-size:.72rem;margin-top:4px;display:block">Contoh:
+          081234567890</small>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button class="btn-link-custom" onclick="closeSetWAModal()">Batal</button>
+        <button class="btn-wa-custom" onclick="submitSetWA()"><i class="bi bi-check2"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL (UNIVERSAL) -->
+  <div id="edit-modal" class="modal-overlay"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div class="modal-card" style="width:100%;max-width:640px;max-height:92vh;overflow-y:auto;position:relative;">
+      <div class="modal-header">
+        <h3 id="edit-modal-title">Edit Data</h3>
+        <button class="modal-close" onclick="closeEditModal()"><i class="bi bi-x"></i></button>
+      </div>
+
+      <div id="edit-form-container">
+        <!-- JS will inject form fields here dynamically -->
+      </div>
+
+      <div class="form-group" id="edit-file-section"
+        style="margin-top:16px;background:var(--body-bg);padding:12px;border-radius:8px;border:1px dashed var(--border);">
+        <label class="form-label" id="edit-file-label" style="font-size:.82rem;font-weight:600;color:var(--text-main);display:block;margin-bottom:6px">Ganti Lampiran File? (Opsional)</label>
+        <div class="file-drop" id="edit-drop">
+          <div class="drop-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+          <div class="drop-text" style="font-size:0.75rem">Biarkan kosong jika tidak ingin mengubah file saat ini.</div>
+          <input type="file" id="edit-file" onchange="handleFileSelect('edit-file', 'edit-file-info')">
+          <div class="drop-name" id="edit-file-info"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:24px;justify-content:flex-end;">
+        <button class="btn-secondary-custom" onclick="closeEditModal()">Batal</button>
+        <button class="btn-primary-custom" id="btn-save-edit" onclick="submitEditData()"><i class="bi bi-save"></i>
+          Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PICK MAP MODAL ══ -->
+  <div id="pick-map-modal"
+    style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+    <div
+      style="background:var(--card, #fff);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.45);width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border)">
+      <!-- header -->
+      <div
+        style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:9px">
+          <i class="bi bi-map-fill" style="color:#1e6fd9;font-size:1.1rem"></i>
+          <div>
+            <div style="font-weight:800;font-size:.95rem;color:var(--text-main)" id="pick-map-title">Pilih Lokasi di Peta</div>
+            <div style="font-size:.72rem;color:var(--text-muted)" id="pick-map-hint">Geser atau klik peta, lalu tekan
+              <b>Konfirmasi</b>
+            </div>
+          </div>
+        </div>
+        <button onclick="closePickMapModal()"
+          style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.3rem;line-height:1"><i
+            class="bi bi-x"></i></button>
+      </div>
+
+      <!-- search bar -->
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
+        <input id="pick-map-search" type="text" placeholder="Cari alamat / nama tempat..."
+          style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--body-bg);color:var(--text-main);font-size:.82rem;font-family:inherit;outline:none"
+          onkeydown="if(event.key==='Enter') searchPickMapAddr()" />
+        <button onclick="searchPickMapAddr()"
+          style="padding:8px 14px;background:#1e6fd9;color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap"><i
+            class="bi bi-search"></i> Cari</button>
+      </div>
+
+      <!-- map container -->
+      <div style="flex:1;position:relative;min-height:340px">
+        <div id="pick-map-div" style="width:100%;height:100%;min-height:340px"></div>
+        <!-- crosshair overlay -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:800">
+          <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+            <div style="position:absolute;width:2px;height:100%;background:#e11d48;opacity:.8"></div>
+            <div style="position:absolute;height:2px;width:100%;background:#e11d48;opacity:.8"></div>
+            <div
+              style="width:10px;height:10px;border-radius:50%;background:#e11d48;box-shadow:0 0 0 3px rgba(225,29,72,.3)">
+            </div>
+          </div>
+        </div>
+        <!-- coord display -->
+        <div id="pick-map-coords"
+          style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(10,22,44,.85);color:#fff;padding:5px 14px;border-radius:20px;font-size:.72rem;font-weight:700;white-space:nowrap;backdrop-filter:blur(6px);pointer-events:none;z-index:800">
+          Geser peta ke lokasi yang diinginkan
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div
+        style="padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;align-items:center;flex-shrink:0">
+        <button onclick="clearPickMapCoords()"
+          style="padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text-muted);font-size:.8rem;font-weight:600;cursor:pointer"><i
+            class="bi bi-x-circle"></i> Hapus Koordinat</button>
+        <div style="display:flex;gap:8px">
+          <button onclick="closePickMapModal()"
+            style="padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text-muted);font-size:.8rem;font-weight:600;cursor:pointer">Batal</button>
+          <button onclick="confirmPickMapCoords()"
+            style="padding:7px 18px;background:#1e6fd9;color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:700;cursor:pointer"><i
+              class="bi bi-check-lg"></i> Konfirmasi Lokasi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ══ END PICK MAP MODAL ══ -->
+
+  <!-- MODAL SELESAI DISPOSISI -->
+  <div id="disp-selesai-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div style="background:var(--card-bg);border-radius:16px;width:min(480px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);border:1px solid var(--border);position:relative;">
+
+      <!-- Loading overlay di dalam modal -->
+      <div id="disp-selesai-loading" style="display:none;position:absolute;inset:0;background:rgba(var(--card-bg-rgb,255,255,255),.92);backdrop-filter:blur(6px);z-index:10;border-radius:16px;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+        <div class="spw"><div class="spo"></div><div class="spi"></div></div>
+        <div style="text-align:center">
+          <div id="disp-selesai-loading-label" style="font-weight:700;font-size:.9rem;color:var(--text-main)">Menyimpan...</div>
+          <div id="disp-selesai-loading-sub" style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Mohon tunggu sebentar</div>
+        </div>
+        <!-- Progress steps -->
+        <div id="disp-selesai-loading-steps" style="display:flex;flex-direction:column;gap:6px;min-width:200px"></div>
+      </div>
+
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0"><i class="bi bi-check-lg"></i></div>
+          <div>
+            <div style="font-weight:800;font-size:.95rem;color:var(--text-main)">Tandai Selesai</div>
+            <div id="disp-selesai-subtitle" style="font-size:.73rem;color:var(--text-muted)">Konfirmasi penyelesaian disposisi</div>
+          </div>
+        </div>
+        <button onclick="closeSelesaiModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;line-height:1"><i class="bi bi-x"></i></button>
+      </div>
+      <div style="padding:16px 20px">
+        <div class="form-group">
+          <label style="font-size:.82rem;font-weight:600">Keterangan <span style="font-size:.72rem;color:var(--text-muted)">(opsional)</span></label>
+          <textarea id="disp-selesai-ket" class="form-control-custom" rows="3" placeholder="Catatan penyelesaian, hasil kegiatan, dll..." style="resize:vertical"></textarea>
+        </div>
+        <div class="form-group">
+          <label style="font-size:.82rem;font-weight:600">Foto Bukti <span style="font-size:.72rem;color:var(--text-muted)">(opsional)</span></label>
+          <div class="file-drop" id="disp-selesai-drop">
+            <input type="file" id="disp-selesai-foto" accept="image/*,.pdf" onchange="handleFileSelect('disp-selesai-foto','disp-selesai-foto-info')" />
+            <div class="drop-icon" style="font-size:1.4rem"><i class="bi bi-camera"></i></div>
+            <div class="drop-text" style="font-size:.8rem">Upload foto bukti kegiatan (Gambar/PDF)</div>
+            <div class="drop-name" id="disp-selesai-foto-info"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+          <button class="btn-link-custom" onclick="closeSelesaiModal()">Batal</button>
+          <button class="btn-primary-custom" style="background:linear-gradient(135deg,#16a34a,#15803d)" onclick="submitSelesaiDisposisi()"><i class="bi bi-check-lg"></i> Tandai Selesai</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL WA DISPOSISI (per kegiatan) -->
+  <div id="disp-wa-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div class="wa-modal-box">
+      <div class="wa-modal-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;background:linear-gradient(135deg,#25D366,#128C7E);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;flex-shrink:0">
+            <i class="bi bi-whatsapp"></i>
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1rem;font-weight:800;color:var(--text-main)">Kirim Disposisi via WhatsApp</h3>
+            <p id="disp-wa-subtitle" style="margin:0;font-size:.73rem;color:var(--text-muted)">Pesan disposisi per kegiatan</p>
+          </div>
+        </div>
+        <button onclick="closeDispWAModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;line-height:1"><i class="bi bi-x"></i></button>
+      </div>
+      <div class="wa-modal-body">
+        <!-- Input Ajudan — dropdown multi-pilih dari data ajudan -->
+        <div style="background:var(--body-bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Ajudan yang Bertugas</div>
+          <div id="disp-wa-ajudan-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+            <div style="font-size:.78rem;color:var(--text-muted);font-style:italic">Memuat daftar ajudan...</div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text-muted)"><i class="bi bi-info-circle"></i> Centang satu atau lebih ajudan yang bertugas</div>
+        </div>
+
+        <div class="wa-preview-box" id="disp-wa-preview-box" style="min-height:160px">
+          <div style="text-align:center;padding:30px;color:var(--text-muted)">
+            <i class="bi bi-send" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.4"></i>
+            <span style="font-size:.85rem">Memuat preview pesan...</span>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div style="font-size:.82rem;font-weight:700;color:var(--text-main);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <i class="bi bi-people-fill" style="color:var(--primary)"></i> Kirim ke
+          </div>
+          <div id="disp-wa-recipients"></div>
+          <div style="margin-top:10px">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:5px">Atau kirim ke nomor lain:</label>
+            <div style="display:flex;gap:8px">
+              <input type="tel" id="disp-wa-custom-no" class="form-control-custom" placeholder="08xxxxxxxxxx" style="flex:1" />
+              <button class="btn-wa-custom" style="padding:8px 14px;font-size:.82rem" onclick="sendDispWACustom()"><i class="bi bi-send"></i> Kirim</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wa-modal-footer">
+        <button class="btn-link-custom" onclick="closeDispWAModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DETAIL AGENDA (DASHBOARD KALENDER) -->
+  <div id="agenda-detail-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+    <div id="agenda-detail-box" style="background:var(--card-bg,#fff);border-radius:16px;width:min(560px,96vw);max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.4);border:1px solid var(--border)">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card-bg,#fff);z-index:1">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="bi bi-calendar3-fill" style="color:var(--primary);font-size:1.1rem"></i>
+          <div>
+            <div id="agenda-detail-title" style="font-weight:800;font-size:.95rem;color:var(--text-main)">Detail Agenda</div>
+            <div id="agenda-detail-date" style="font-size:.75rem;color:var(--text-muted)"></div>
+          </div>
+        </div>
+        <button onclick="closeAgendaDetailModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.4rem;line-height:1"><i class="bi bi-x"></i></button>
+      </div>
+      <div id="agenda-detail-content" style="padding:16px 20px"></div>
+    </div>
+  </div>
+
+  <!-- MODAL FILE VIEWER INLINE -->
+  <div id="file-viewer-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#0f172a;color:#f1f5f9;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i id="fv-icon" class="bi bi-file-earmark" style="font-size:1.1rem;color:#60a5fa"></i>
+        <span id="fv-title" style="font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw"></span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a id="fv-download" href="#" target="_blank" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:6px;font-size:.8rem;text-decoration:none;cursor:pointer"><i class="bi bi-download"></i> <span>Unduh</span></a>
+        <button onclick="closeFileViewer()" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(220,38,38,.7);color:#fff;border:none;border-radius:6px;font-size:.8rem;cursor:pointer"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+    <div id="fv-body" style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:16px"></div>
+  </div>
+
+  <script src="/app/admin/core.js" defer></script>
+  <script src="/app/admin/timepicker.js" defer></script>
+  <script src="/app/admin/nav.js" defer></script>
+  <script src="/app/admin/utils.js" defer></script>
+  <script src="/app/admin/dashboard.js" defer></script>
+  <script src="/app/admin/agenda.js" defer></script>
+  <script src="/app/admin/arsip.js" defer></script>
+  <script src="/app/admin/disposisi.js" defer></script>
+  <script src="/app/admin/edit.js" defer></script>
+  <script src="/app/admin/pengaturan.js" defer></script>
+  <script src="/app/admin/generator.js" defer></script>
+  <script src="/app/admin/peta-agenda.js" defer></script>
+  <script src="/app/main.js" defer></script>
+</body>
+
+</html>
