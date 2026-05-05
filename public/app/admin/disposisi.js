@@ -505,7 +505,7 @@ function formatDispWAMessage(d) {
 
   let msg = 'Kepada Yth.\n';
   msg += kepada + '\n\n';
-  msg += 'Mohon izin, meneruskan arahan pimpinan, dengan hormat disampaikan bahwa\ndimohon untuk dapat hadir pada kegiatan berikut:\n\n';
+  msg += 'Mohon izin meneruskan arahan pimpinan, dengan hormat disampaikan bahwa dimohon untuk dapat hadir pada kegiatan berikut:\n\n';
   msg += 'Hari/Tanggal : ' + tglFormatted + '\n';
   msg += 'Acara        : ' + namaKegiatan + '\n';
   if (waktu && waktu !== '-') msg += 'Waktu        : ' + waktu + '\n';
@@ -522,7 +522,7 @@ function formatDispWAMessage(d) {
   // Ajudan yang bertugas
   msg += 'Ajudan bertugas  : ' + ajudanStr + '\n';
 
-  msg += '\nDemikiran disampaikan, atas perhatian dan kehadirannya diucapkan terima kasih.';
+  msg += '\nDemikian disampaikan, atas perhatian dan kehadirannya diucapkan terima kasih.';
   return msg;
 }
 
